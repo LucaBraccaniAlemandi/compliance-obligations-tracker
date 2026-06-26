@@ -1,0 +1,6 @@
+services:
+  backend:
+    # Keep container alive; run uvicorn manually from the VS Code terminal during dev.
+    command: sleep infinity
+    volumes:
+      - .:/app:cached

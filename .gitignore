@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Next.js / build
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+*.pem
+.idea/
+.vscode/
+
+# Take-home assignment doc
+TakeHome.md
+
+# Claude / AI assistant config
+.claude/
+CLAUDE.md
+AGENTS.md
+skills-lock.json
