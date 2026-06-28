@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.core.database import get_db
 from app.core.errors import NotFoundError
+from app.services.obligation_status import ObligationStatusService
 
 router = APIRouter(prefix="/obligations", tags=["obligations"])
 
@@ -43,6 +44,19 @@ def update_obligation(
     obligation = _get_or_404(db, obligation_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(obligation, field, value)
+    db.commit()
+    db.refresh(obligation)
+    return obligation
+
+
+@router.patch("/{obligation_id}/status", response_model=schemas.ObligationRead)
+def update_obligation_status(
+    obligation_id: int,
+    payload: schemas.ObligationStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    obligation = _get_or_404(db, obligation_id)
+    ObligationStatusService.apply(obligation, payload.status)
     db.commit()
     db.refresh(obligation)
     return obligation
