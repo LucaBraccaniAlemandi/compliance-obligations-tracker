@@ -1,9 +1,9 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 
-from app.config import settings
-from app.database import get_db
+from app.core.config import settings
+from app.core.errors import register_error_handlers
+from app.routes import api_router
 
 app = FastAPI(title=settings.app_name)
 
@@ -20,3 +20,7 @@ app.add_middleware(
 def health():
     return {"status": "ok"}
 
+
+register_error_handlers(app)
+
+app.include_router(api_router)
