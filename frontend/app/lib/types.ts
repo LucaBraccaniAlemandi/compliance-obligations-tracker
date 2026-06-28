@@ -32,8 +32,10 @@ export interface Obligation {
   owner: string;
   requiresDocument: boolean;
   hasDocument: boolean;
-  /** Raw tax id; never render unmasked — see `maskTaxId`. */
+  /** Already masked by the backend (e.g. "****6789"); render as-is. */
   companyTaxId: string;
+  /** Derived and supplied by the backend — not recomputed client-side. */
+  overdue: boolean;
   history: StatusChange[];
 }
 

@@ -135,8 +135,17 @@ export async function deleteObligation(formData: FormData): Promise<ActionResult
   }
 }
 
+/** Maps known backend error codes to friendly messages. */
+const ERROR_MESSAGES: Record<string, string> = {
+  DOCUMENT_REQUIRED:
+    'A required document must be attached before this obligation can be submitted.',
+  INVALID_STATUS_TRANSITION: 'That status change is not allowed.',
+};
+
 function toMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    const code = (err.body as { error?: { code?: string } })?.error?.code;
+    if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
     return `Backend error (${err.status})`;
   }
   return 'Something went wrong. Please try again.';

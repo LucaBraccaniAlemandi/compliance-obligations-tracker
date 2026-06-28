@@ -4,10 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { transitionObligation, attachDocument } from '@/app/lib/actions';
-import {
-  allowedTransitions,
-  transitionBlockedReason,
-} from '@/app/lib/obligations-domain';
+import { allowedTransitions } from '@/app/lib/obligations-domain';
 import { TRANSITION_LABELS, t } from '@/app/lib/strings';
 import type { Obligation, ObligationStatus } from '@/app/lib/types';
 
@@ -38,31 +35,24 @@ export function ObligationActions({ obligation }: { obligation: Obligation }) {
           {error}
         </p>
       ) : null}
+      {/*
+        Transition rules (e.g. a required document before submit) are enforced
+        by the backend. We attempt the transition and surface any error it
+        returns, rather than disabling buttons from client-side guesses.
+      */}
       {transitions.map((to: ObligationStatus) => {
-        const reason = transitionBlockedReason(obligation, to);
-        const disabled = reason !== null || pending;
         const primary = to === 'submitted' || to === 'done';
         return (
-          <div key={to} className="flex flex-col gap-1.5">
-            <Button
-              type="button"
-              variant={primary ? 'default' : 'outline'}
-              className="w-full rounded-full"
-              disabled={disabled}
-              aria-disabled={disabled}
-              onClick={() => run(() => transitionObligation(obligation.id, to))}
-            >
-              {TRANSITION_LABELS[to]}
-            </Button>
-            {reason ? (
-              <p className="flex gap-1.5 text-[11px] leading-snug text-muted-foreground">
-                <span aria-hidden="true" className="font-medium text-destructive">
-                  !
-                </span>
-                <span>{reason}</span>
-              </p>
-            ) : null}
-          </div>
+          <Button
+            key={to}
+            type="button"
+            variant={primary ? 'default' : 'outline'}
+            className="w-full rounded-full"
+            disabled={pending}
+            onClick={() => run(() => transitionObligation(obligation.id, to))}
+          >
+            {TRANSITION_LABELS[to]}
+          </Button>
         );
       })}
     </div>

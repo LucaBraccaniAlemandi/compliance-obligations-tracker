@@ -5,11 +5,7 @@ import { ApiError } from '@/app/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import {
-  isOverdue,
-  maskTaxId,
-  statusBadgeVariant,
-} from '@/app/lib/obligations-domain';
+import { statusBadgeVariant } from '@/app/lib/obligations-domain';
 import { STATUS_LABELS, TYPE_LABELS, t } from '@/app/lib/strings';
 import { ObligationActions, AttachDocumentButton } from './obligation-actions';
 import type { ObligationStatus } from '@/app/lib/types';
@@ -51,7 +47,7 @@ export default async function ObligationDetailPage({
     throw err;
   }
 
-  const overdue = isOverdue(o);
+  const overdue = o.overdue;
   const history = [...o.history].reverse();
 
   return (
@@ -180,7 +176,7 @@ export default async function ObligationDetailPage({
                 </dt>
                 <dd className="m-0 flex items-center gap-2">
                   <span className="font-mono text-sm tabular-nums">
-                    {maskTaxId(o.companyTaxId)}
+                    {o.companyTaxId}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     ({t.taxidNote})

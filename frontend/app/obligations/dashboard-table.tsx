@@ -23,11 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Obligation, ObligationStatus, ObligationType } from '@/app/lib/types';
-import {
-  isOverdue,
-  isDueSoon,
-  statusBadgeVariant,
-} from '@/app/lib/obligations-domain';
+import { statusBadgeVariant } from '@/app/lib/obligations-domain';
 import { STATUS_LABELS, TYPE_LABELS, t } from '@/app/lib/strings';
 
 const STATUSES: ObligationStatus[] = ['pending', 'in_progress', 'submitted', 'done'];
@@ -66,12 +62,7 @@ export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
       { label: t.kpiDone, value: count('done') },
       {
         label: t.kpiOverdue,
-        value: obligations.filter((o) => isOverdue(o)).length,
-        attn: true,
-      },
-      {
-        label: t.kpiDueSoon,
-        value: obligations.filter((o) => isDueSoon(o)).length,
+        value: obligations.filter((o) => o.overdue).length,
         attn: true,
       },
     ];
@@ -83,14 +74,14 @@ export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
         (o) =>
           (filterStatus === 'all' || o.status === filterStatus) &&
           (filterType === 'all' || o.type === filterType) &&
-          (!overdueOnly || isOverdue(o)),
+          (!overdueOnly || o.overdue),
       )
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   }, [obligations, filterStatus, filterType, overdueOnly]);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {kpis.map((k) => (
           <Card key={k.label} className="gap-0 p-4">
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -177,7 +168,7 @@ export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
           </TableHeader>
           <TableBody>
             {rows.map((o) => {
-              const overdue = isOverdue(o);
+              const overdue = o.overdue;
               return (
                 <TableRow
                   key={o.id}

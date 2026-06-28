@@ -26,6 +26,8 @@ function fromDto(d: ObligationDto): Obligation {
     hasDocument: Boolean(d.document_path),
     // Backend already masks this on read (e.g. "****6789").
     companyTaxId: d.company_tax_id,
+    // Derived server-side; the UI does not recompute it.
+    overdue: d.overdue,
     // Backend does not track a status-change history yet.
     history: [],
   };
