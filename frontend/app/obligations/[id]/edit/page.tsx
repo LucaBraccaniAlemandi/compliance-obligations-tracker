@@ -1,8 +1,6 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getObligation } from '@/app/lib/obligations';
+import { getObligationOrNotFound } from '@/app/lib/obligations';
 import { updateObligation } from '@/app/lib/actions';
-import { ApiError } from '@/app/lib/api';
 import { t } from '@/app/lib/strings';
 import { ObligationForm } from '../../obligation-form';
 
@@ -13,13 +11,7 @@ export default async function EditObligationPage({
 }) {
   const { id } = await params;
 
-  let obligation;
-  try {
-    obligation = await getObligation(id);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
-  }
+  const obligation = await getObligationOrNotFound(id);
 
   // Bind the obligation id into the update action's (id, prev, formData) shape.
   const action = updateObligation.bind(null, id);

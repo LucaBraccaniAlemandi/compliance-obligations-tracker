@@ -1,7 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getObligation } from '@/app/lib/obligations';
-import { ApiError } from '@/app/lib/api';
+import { getObligationOrNotFound } from '@/app/lib/obligations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -39,13 +37,7 @@ export default async function ObligationDetailPage({
 }) {
   const { id } = await params;
 
-  let o;
-  try {
-    o = await getObligation(id);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
-  }
+  const o = await getObligationOrNotFound(id);
 
   const overdue = o.overdue;
   const history = [...o.history].reverse();

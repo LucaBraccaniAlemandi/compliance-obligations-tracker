@@ -1,6 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
-import { apiGet } from './api';
+import { notFound } from 'next/navigation';
+import { apiGet, ApiError } from './api';
 import type { Obligation, ObligationDto } from './types';
 
 /**
@@ -41,3 +42,17 @@ export const getObligations = cache(async (): Promise<Obligation[]> => {
 export const getObligation = cache(async (id: string): Promise<Obligation> => {
   return fromDto(await apiGet<ObligationDto>(`/api/obligations/${id}`));
 });
+
+/**
+ * Like {@link getObligation}, but renders the not-found page when the backend
+ * reports a 404 instead of bubbling the error. Lets pages read an obligation
+ * with a single `await`.
+ */
+export async function getObligationOrNotFound(id: string): Promise<Obligation> {
+  try {
+    return await getObligation(id);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) notFound();
+    throw err;
+  }
+}
