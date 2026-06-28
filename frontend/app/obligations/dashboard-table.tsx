@@ -195,9 +195,6 @@ export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
                           </Badge>
                         ) : null}
                       </span>
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {o.id}
-                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-foreground/80">
