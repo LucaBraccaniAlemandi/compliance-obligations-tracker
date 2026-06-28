@@ -102,5 +102,6 @@ export const t = {
   fTaxId: 'Company tax ID',
   requiredMark: 'required',
   taxidHelp: 'Stored securely and shown masked after saving.',
+  taxidLocked: "Tax ID can't be changed after creation.",
   serverErrorBanner: "Couldn't save. Please review the errors below.",
 } as const;

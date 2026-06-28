@@ -36,6 +36,7 @@ export default async function EditObligationPage({
       <ObligationForm
         action={action}
         redirectTo={`/obligations/${id}`}
+        taxIdEditable={false}
         defaults={{
           type: obligation.type,
           title: obligation.title,

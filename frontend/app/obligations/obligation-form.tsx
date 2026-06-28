@@ -54,9 +54,19 @@ interface Props {
   defaults?: ObligationFormDefaults;
   /** Where to navigate after a successful save. */
   redirectTo: string;
+  /**
+   * Whether the company tax id can be edited. The backend only accepts it on
+   * create, so edit forms pass `false` to render it read-only.
+   */
+  taxIdEditable?: boolean;
 }
 
-export function ObligationForm({ action, defaults = BLANK, redirectTo }: Props) {
+export function ObligationForm({
+  action,
+  defaults = BLANK,
+  redirectTo,
+  taxIdEditable = true,
+}: Props) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
     ActionResult | undefined,
@@ -177,15 +187,18 @@ export function ObligationForm({ action, defaults = BLANK, redirectTo }: Props) 
       <Field
         label={t.fTaxId}
         htmlFor="fld-tax"
-        error={errors.companyTaxId}
-        help={t.taxidHelp}
+        error={taxIdEditable ? errors.companyTaxId : undefined}
+        help={taxIdEditable ? t.taxidHelp : t.taxidLocked}
       >
         <Input
           id="fld-tax"
           name="companyTaxId"
           placeholder="12-3456789"
           defaultValue={defaults.companyTaxId}
-          aria-invalid={Boolean(errors.companyTaxId)}
+          aria-invalid={taxIdEditable ? Boolean(errors.companyTaxId) : undefined}
+          // The backend rejects tax-id changes on update; show it read-only.
+          // A disabled input is also omitted from the submitted FormData.
+          disabled={!taxIdEditable}
           className="font-mono tabular-nums"
         />
       </Field>
