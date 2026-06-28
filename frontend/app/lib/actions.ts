@@ -1,24 +1,39 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { apiPost, apiPut, apiPatch, apiDelete, ApiError } from './api';
-import { obligationFormSchema, readObligationForm } from './validation';
-import type { ActionResult, FieldErrors, Obligation, ObligationStatus } from './types';
+import { apiPost, apiPatch, apiDelete, ApiError } from './api';
+import {
+  obligationFormSchema,
+  readObligationForm,
+  type ObligationFormValues,
+} from './validation';
+import type {
+  ActionResult,
+  FieldErrors,
+  ObligationDto,
+  ObligationStatus,
+} from './types';
 
 /**
- * Server Actions for mutating obligations on the separate backend.
+ * Server Actions for mutating obligations on the separate FastAPI backend.
  *
  * Reachable via direct POST, not only through the UI, so every action
  * re-validates its input here. When auth lands, validate the session at the top
  * of every action before touching the backend.
+ *
+ * The backend contract is snake_case and splits concerns across routes:
+ *   - POST   /api/obligations            create (accepts company_tax_id)
+ *   - PATCH  /api/obligations/:id         edit fields (NOT status / tax id)
+ *   - PATCH  /api/obligations/:id/status  status transitions only
+ * The mappers below translate the camelCase form values to that wire shape.
  */
 
 function validateForm(
   formData: FormData,
-): { ok: true; data: Obligation } | { ok: false; fieldErrors: FieldErrors } {
+): { ok: true; data: ObligationFormValues } | { ok: false; fieldErrors: FieldErrors } {
   const parsed = obligationFormSchema.safeParse(readObligationForm(formData));
   if (parsed.success) {
-    return { ok: true, data: parsed.data as unknown as Obligation };
+    return { ok: true, data: parsed.data };
   }
   const fieldErrors: FieldErrors = {};
   for (const issue of parsed.error.issues) {
@@ -26,6 +41,18 @@ function validateForm(
     if (key && !fieldErrors[key]) fieldErrors[key] = issue.message;
   }
   return { ok: false, fieldErrors };
+}
+
+/** Fields the backend accepts on both create and edit (snake_case). */
+function toEditablePayload(d: ObligationFormValues) {
+  return {
+    type: d.type,
+    title: d.title,
+    description: d.description,
+    due_date: d.dueDate,
+    owner: d.owner,
+    requires_document: d.requiresDocument,
+  };
 }
 
 export async function createObligation(
@@ -37,7 +64,11 @@ export async function createObligation(
     return { ok: false, error: 'Validation failed.', fieldErrors: result.fieldErrors };
   }
   try {
-    await apiPost<Obligation>('/api/obligations', result.data);
+    // company_tax_id is only accepted on create.
+    await apiPost<ObligationDto>('/api/obligations', {
+      ...toEditablePayload(result.data),
+      company_tax_id: result.data.companyTaxId,
+    });
     revalidatePath('/obligations');
     return { ok: true };
   } catch (err) {
@@ -55,7 +86,8 @@ export async function updateObligation(
     return { ok: false, error: 'Validation failed.', fieldErrors: result.fieldErrors };
   }
   try {
-    await apiPut<Obligation>(`/api/obligations/${id}`, result.data);
+    // PATCH (not PUT); status and company_tax_id are not editable here.
+    await apiPatch<ObligationDto>(`/api/obligations/${id}`, toEditablePayload(result.data));
     revalidatePath('/obligations');
     revalidatePath(`/obligations/${id}`);
     return { ok: true };
@@ -69,7 +101,8 @@ export async function transitionObligation(
   to: ObligationStatus,
 ): Promise<ActionResult> {
   try {
-    await apiPatch<Obligation>(`/api/obligations/${id}`, { status: to });
+    // Dedicated transition route enforces the backend state machine.
+    await apiPatch<ObligationDto>(`/api/obligations/${id}/status`, { status: to });
     revalidatePath('/obligations');
     revalidatePath(`/obligations/${id}`);
     return { ok: true };
@@ -80,7 +113,10 @@ export async function transitionObligation(
 
 export async function attachDocument(id: string): Promise<ActionResult> {
   try {
-    await apiPatch<Obligation>(`/api/obligations/${id}`, { hasDocument: true });
+    // Backend models the document as a nullable path, not a boolean.
+    await apiPatch<ObligationDto>(`/api/obligations/${id}`, {
+      document_path: `${id}.pdf`,
+    });
     revalidatePath(`/obligations/${id}`);
     return { ok: true };
   } catch (err) {

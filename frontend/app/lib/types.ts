@@ -37,6 +37,28 @@ export interface Obligation {
   history: StatusChange[];
 }
 
+/**
+ * Wire shape returned/accepted by the FastAPI backend (snake_case).
+ * Kept separate from the UI domain {@link Obligation}; map via the adapters in
+ * `obligations.ts` / `actions.ts`. The backend has no `history`, exposes
+ * documents as a nullable `document_path`, masks `company_tax_id` on read, and
+ * uses integer ids.
+ */
+export interface ObligationDto {
+  id: number;
+  type: ObligationType;
+  title: string;
+  description: string | null;
+  status: ObligationStatus;
+  due_date: string | null;
+  owner: string;
+  requires_document: boolean;
+  document_path: string | null;
+  company_tax_id: string;
+  created_at: string;
+  overdue: boolean;
+}
+
 /** Field-level validation errors keyed by form field name. */
 export type FieldErrors = Partial<Record<string, string>>;
 
