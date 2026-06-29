@@ -67,6 +67,41 @@ export interface ObligationDto {
 }
 
 /**
+ * Wire shape for the paginated GET /api/obligations envelope (snake_case).
+ * The endpoint no longer returns a bare array; `items` holds the page rows and
+ * `total` counts all matching rows ignoring `limit`/`offset`.
+ */
+export interface ObligationPageDto {
+  items: ObligationDto[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** UI domain shape for a page of obligations; mirrors {@link ObligationPageDto}. */
+export interface ObligationPage {
+  items: Obligation[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Filter + pagination inputs for GET /api/obligations. All optional; omitted
+ * fields are left off the query string (backend applies its defaults).
+ */
+export interface ObligationListParams {
+  limit?: number;
+  offset?: number;
+  /** Repeatable on the wire (`?status=a&status=b`); OR-matched by the backend. */
+  status?: ObligationStatus[];
+  /** true = only overdue, false = only not-overdue, undefined = all. */
+  overdue?: boolean;
+  /** Case-insensitive substring match on title. */
+  title?: string;
+}
+
+/**
  * Wire shape for GET /api/obligations/kpis (snake_case).
  * `overdue` overlaps the `by_status` buckets — it's a separate metric, not a
  * sum of them. Map via the adapter in `obligations.ts`.

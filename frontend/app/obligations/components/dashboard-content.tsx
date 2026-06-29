@@ -1,18 +1,30 @@
 import Link from 'next/link';
 import { getObligations, getObligationKpis } from '@/app/lib/obligations';
-import type { Obligation, ObligationKpis } from '@/app/lib/types';
+import type {
+  ObligationKpis,
+  ObligationListParams,
+  ObligationPage,
+} from '@/app/lib/types';
+import { hasActiveFilters } from '@/app/lib/obligation-search-params';
 import { ApiError } from '@/app/lib/api';
 import { t } from '@/app/lib/strings';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DashboardTable } from './dashboard-table';
 
-export async function DashboardContent() {
-  let obligations: Obligation[];
+export async function DashboardContent({
+  params,
+}: {
+  params: ObligationListParams;
+}) {
+  let page: ObligationPage;
   let kpis: ObligationKpis;
   try {
     // Independent reads — fetch in parallel to avoid a request waterfall.
-    [obligations, kpis] = await Promise.all([getObligations(), getObligationKpis()]);
+    [page, kpis] = await Promise.all([
+      getObligations(params),
+      getObligationKpis(),
+    ]);
   } catch (err) {
     const detail = err instanceof ApiError ? ` (status ${err.status})` : '';
     return (
@@ -29,7 +41,8 @@ export async function DashboardContent() {
     );
   }
 
-  if (obligations.length === 0) {
+  // No obligations at all (and no filters applied) — first-run empty state.
+  if (page.total === 0 && !hasActiveFilters(params)) {
     return (
       <Card className="flex flex-col items-center gap-2 border-dashed p-14 text-center">
         <p className="text-lg font-medium">{t.emptyTitle}</p>
@@ -41,5 +54,7 @@ export async function DashboardContent() {
     );
   }
 
-  return <DashboardTable obligations={obligations} kpis={kpis} />;
+  // Filtered down to zero is handled inside DashboardTable so the filter
+  // controls stay visible and the user can clear them.
+  return <DashboardTable page={page} params={params} kpis={kpis} />;
 }
