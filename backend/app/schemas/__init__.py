@@ -1,7 +1,9 @@
 from app.schemas.obligation import (
     ObligationBase,
     ObligationCreate,
+    ObligationDetailRead,
     ObligationRead,
+    ObligationStatusHistoryRead,
     ObligationStatusUpdate,
     ObligationUpdate,
 )
@@ -9,7 +11,9 @@ from app.schemas.obligation import (
 __all__ = [
     "ObligationBase",
     "ObligationCreate",
+    "ObligationDetailRead",
     "ObligationRead",
+    "ObligationStatusHistoryRead",
     "ObligationStatusUpdate",
     "ObligationUpdate",
 ]

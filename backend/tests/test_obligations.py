@@ -134,3 +134,41 @@ def test_submit_allowed_with_document(client):
     resp = client.patch(f"api/obligations/{oid}/status", json={"status": "submitted"})
     assert resp.status_code == 200
     assert resp.json()["status"] == "submitted"
+
+
+def test_history_records_transition(client):
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+    client.patch(f"api/obligations/{oid}/status", json={"status": "in_progress"})
+
+    history = client.get(f"api/obligations/{oid}").json()["status_history"]
+    assert len(history) == 1
+    assert history[0]["from_status"] == "pending"
+    assert history[0]["to_status"] == "in_progress"
+    assert history[0]["changed_at"]
+
+
+def test_history_full_lifecycle_ordered(client):
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+    for state in ["in_progress", "submitted", "done"]:
+        client.patch(f"api/obligations/{oid}/status", json={"status": state})
+
+    history = client.get(f"api/obligations/{oid}").json()["status_history"]
+    assert [(h["from_status"], h["to_status"]) for h in history] == [
+        ("pending", "in_progress"),
+        ("in_progress", "submitted"),
+        ("submitted", "done"),
+    ]
+
+
+def test_history_absent_on_list(client):
+    client.post("api/obligations", json=_payload())
+    rows = client.get("api/obligations").json()
+    assert all("status_history" not in row for row in rows)
+
+
+def test_history_not_written_on_invalid_transition(client):
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+    client.patch(f"api/obligations/{oid}/status", json={"status": "done"})  # 409
+
+    history = client.get(f"api/obligations/{oid}").json()["status_history"]
+    assert history == []

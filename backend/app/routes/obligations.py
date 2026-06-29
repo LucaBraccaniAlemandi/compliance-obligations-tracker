@@ -30,7 +30,7 @@ def list_obligations(db: Session = Depends(get_db)):
     return db.query(models.Obligation).all()
 
 
-@router.get("/{obligation_id}", response_model=schemas.ObligationRead)
+@router.get("/{obligation_id}", response_model=schemas.ObligationDetailRead)
 def get_obligation(obligation_id: int, db: Session = Depends(get_db)):
     return _get_or_404(db, obligation_id)
 
