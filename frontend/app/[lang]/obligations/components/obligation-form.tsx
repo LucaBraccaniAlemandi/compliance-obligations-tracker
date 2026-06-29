@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ActionResult, FieldErrors, ObligationType } from '@/app/lib/types';
-import { obligationFormSchema } from '@/app/lib/validation';
-import { TYPE_LABELS, t } from '@/app/lib/strings';
+import { buildObligationFormSchema, validationMessages } from '@/app/lib/validation';
+import { useDictionary } from '@/app/lib/dictionaries/provider';
 
 const TYPES: ObligationType[] = [
   'annual_report',
@@ -71,6 +71,8 @@ export function ObligationForm({
   successMessage,
   taxIdEditable = true,
 }: Props) {
+  const { t, TYPE_LABELS } = useDictionary();
+  const schema = useMemo(() => buildObligationFormSchema(validationMessages(t)), [t]);
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
     ActionResult | undefined,
@@ -104,7 +106,7 @@ export function ObligationForm({
   const hasServerBanner = Boolean(state && !state.ok && state.fieldErrors);
 
   function handleSubmit(formData: FormData) {
-    const parsed = obligationFormSchema.safeParse({
+    const parsed = schema.safeParse({
       type: String(formData.get('type') ?? ''),
       title: String(formData.get('title') ?? ''),
       description: String(formData.get('description') ?? ''),
@@ -151,7 +153,13 @@ export function ObligationForm({
         </Select>
       </Field>
 
-      <Field label={t.fTitle} htmlFor="fld-title" required error={errors.title}>
+      <Field
+        label={t.fTitle}
+        htmlFor="fld-title"
+        required
+        requiredLabel={t.requiredMark}
+        error={errors.title}
+      >
         <Input
           id="fld-title"
           name="title"
@@ -174,6 +182,7 @@ export function ObligationForm({
           label={t.fDue}
           htmlFor="fld-due"
           required
+          requiredLabel={t.requiredMark}
           error={errors.dueDate}
           className="min-w-44 flex-1"
         >
@@ -189,6 +198,7 @@ export function ObligationForm({
           label={t.fOwner}
           htmlFor="fld-owner"
           required
+          requiredLabel={t.requiredMark}
           error={errors.owner}
           className="min-w-44 flex-1"
         >
@@ -246,6 +256,7 @@ function Field({
   label,
   htmlFor,
   required,
+  requiredLabel,
   error,
   help,
   className,
@@ -254,6 +265,7 @@ function Field({
   label: string;
   htmlFor: string;
   required?: boolean;
+  requiredLabel?: string;
   error?: string;
   help?: string;
   className?: string;
@@ -265,7 +277,7 @@ function Field({
       <Label htmlFor={htmlFor} className="text-sm font-normal">
         {label}
         {required ? (
-          <span className="font-light text-muted-foreground"> ({t.requiredMark})</span>
+          <span className="font-light text-muted-foreground"> ({requiredLabel})</span>
         ) : null}
       </Label>
       {children}

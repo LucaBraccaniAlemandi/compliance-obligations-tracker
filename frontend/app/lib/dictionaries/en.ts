@@ -1,20 +1,19 @@
 /**
- * Centralized user-facing strings (English).
- *
- * Kept in one module so a later i18n pass can swap in additional locales
- * without restructuring components.
+ * English dictionary — the source of truth for the set of keys every locale
+ * must provide. `Dictionary` is derived from this object, so adding a key here
+ * makes it required in every other locale file.
  */
 
-import type { ObligationStatus, ObligationType } from './types';
+import type { ObligationStatus, ObligationType } from '../types';
 
-export const STATUS_LABELS: Record<ObligationStatus, string> = {
+const STATUS_LABELS: Record<ObligationStatus, string> = {
   pending: 'Pending',
   in_progress: 'In progress',
   submitted: 'Submitted',
   done: 'Done',
 };
 
-export const TYPE_LABELS: Record<ObligationType, string> = {
+const TYPE_LABELS: Record<ObligationType, string> = {
   annual_report: 'Annual report',
   franchise_tax: 'Franchise tax',
   boi_report: 'BOI report',
@@ -22,14 +21,14 @@ export const TYPE_LABELS: Record<ObligationType, string> = {
 };
 
 /** Label shown on the transition button that moves an obligation *to* a status. */
-export const TRANSITION_LABELS: Record<ObligationStatus, string> = {
+const TRANSITION_LABELS: Record<ObligationStatus, string> = {
   pending: 'Reopen',
   in_progress: 'Start progress',
   submitted: 'Submit',
   done: 'Mark as done',
 };
 
-export const t = {
+const t = {
   appName: 'Compliance Tracker',
   dashboardTitle: 'Obligations',
   create: 'Create obligation',
@@ -40,6 +39,7 @@ export const t = {
   edit: 'Edit',
   save: 'Save',
   saving: 'Saving…',
+  language: 'Language',
 
   kpiTotal: 'Total',
   kpiPending: 'Pending',
@@ -63,6 +63,7 @@ export const t = {
   noMatchBody: 'No obligations match the current filters.',
   paginationPrev: 'Previous',
   paginationNext: 'Next',
+  rangeOf: 'of',
 
   colTitle: 'Title',
   colType: 'Type',
@@ -119,4 +120,28 @@ export const t = {
     'This obligation was changed by someone else. Showing the latest version — review and retry.',
   toastDocAttached: 'Document attached.',
   toastActionFailed: 'Action failed.',
-} as const;
+
+  // Form validation messages (shared by client + server validation).
+  vTitleRequired: 'Title is required.',
+  vDueRequired: 'Due date is required.',
+  vDueInvalid: 'Enter a valid date.',
+  vOwnerRequired: 'Owner is required.',
+  vTaxIdFormat: 'Use the format 12-3456789.',
+  validationFailed: 'Validation failed.',
+
+  // Backend error-code messages. `{from}`/`{to}`/`{status}` are interpolated.
+  errValidation: 'Please check the highlighted fields and try again.',
+  errNotFound: 'This obligation no longer exists. It may have been deleted.',
+  errInvalidTransition: "Can't move this obligation from {from} to {to}.",
+  errDocumentRequired:
+    'A required document must be attached before this obligation can be submitted.',
+  errHttp: 'The server rejected this request ({status}).',
+  errInternal: 'The server hit an unexpected error. Please try again.',
+  errGeneric: 'Something went wrong. Please try again.',
+  errBackend: 'Backend error ({status}).',
+};
+
+export const en = { STATUS_LABELS, TYPE_LABELS, TRANSITION_LABELS, t };
+
+/** Shape every locale must implement. Derived from the English dictionary. */
+export type Dictionary = typeof en;

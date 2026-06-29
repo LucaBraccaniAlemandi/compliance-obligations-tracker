@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { getObligationOrNotFound } from '@/app/lib/obligations';
 import { updateObligation } from '@/app/lib/actions';
-import { t } from '@/app/lib/strings';
+import { getDictionary } from '@/app/lib/dictionaries/get';
+import type { Locale } from '@/app/lib/dictionaries/config';
 import { ObligationForm } from '../../components/obligation-form';
 
 export default async function EditObligationPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ lang: Locale; id: string }>;
 }) {
-  const { id } = await params;
+  const { lang, id } = await params;
+  const { t } = await getDictionary(lang);
 
   const obligation = await getObligationOrNotFound(id);
 
@@ -19,7 +21,7 @@ export default async function EditObligationPage({
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-9 pb-20">
       <Link
-        href={`/obligations/${id}`}
+        href={`/${lang}/obligations/${id}`}
         className="mb-4 inline-block text-sm text-primary hover:underline"
       >
         ← {t.back}
@@ -27,7 +29,7 @@ export default async function EditObligationPage({
       <h1 className="mb-5 text-2xl font-light tracking-tight">{t.editTitle}</h1>
       <ObligationForm
         action={action}
-        redirectTo={`/obligations/${id}`}
+        redirectTo={`/${lang}/obligations/${id}`}
         successMessage={t.toastUpdated}
         taxIdEditable={false}
         defaults={{

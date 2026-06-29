@@ -6,10 +6,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { transitionObligation, attachDocument } from '@/app/lib/actions';
 import { allowedTransitions } from '@/app/lib/obligations-domain';
-import { TRANSITION_LABELS, t } from '@/app/lib/strings';
+import { useDictionary } from '@/app/lib/dictionaries/provider';
 import type { Obligation, ObligationStatus } from '@/app/lib/types';
 
 export function ObligationActions({ obligation }: { obligation: Obligation }) {
+  const { t, TRANSITION_LABELS } = useDictionary();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -74,6 +75,7 @@ export function ObligationActions({ obligation }: { obligation: Obligation }) {
 }
 
 export function AttachDocumentButton({ id }: { id: string }) {
+  const { t } = useDictionary();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 

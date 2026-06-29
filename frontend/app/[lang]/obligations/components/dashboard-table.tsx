@@ -32,27 +32,10 @@ import type {
 } from '@/app/lib/types';
 import { encodeObligationParams } from '@/app/lib/obligation-search-params';
 import { statusBadgeVariant } from '@/app/lib/obligations-domain';
-import { STATUS_LABELS, TYPE_LABELS, t } from '@/app/lib/strings';
+import { useDictionary, useLang } from '@/app/lib/dictionaries/provider';
+import { intlLocale } from '@/app/lib/dictionaries/config';
 
 const STATUSES: ObligationStatus[] = ['pending', 'in_progress', 'submitted', 'done'];
-
-const dateFmt = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-});
-
-function formatDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? iso : dateFmt.format(d);
-}
-
-const STATUS_KPI_LABELS: Record<ObligationStatus, string> = {
-  pending: t.kpiPending,
-  in_progress: t.kpiInProgress,
-  submitted: t.kpiSubmitted,
-  done: t.kpiDone,
-};
 
 /** Tri-state overdue filter encoded as a Select value. */
 type OverdueValue = 'all' | 'true' | 'false';
@@ -72,7 +55,28 @@ export function DashboardTable({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const lang = useLang();
+  const { t, STATUS_LABELS, TYPE_LABELS } = useDictionary();
   const [isPending, startTransition] = useTransition();
+
+  const formatDate = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(intlLocale[lang], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+    return (iso: string) => {
+      const d = new Date(`${iso}T00:00:00`);
+      return Number.isNaN(d.getTime()) ? iso : fmt.format(d);
+    };
+  }, [lang]);
+
+  const STATUS_KPI_LABELS: Record<ObligationStatus, string> = {
+    pending: t.kpiPending,
+    in_progress: t.kpiInProgress,
+    submitted: t.kpiSubmitted,
+    done: t.kpiDone,
+  };
 
   const { items, total, limit, offset } = page;
   const activeStatuses = params.status ?? [];
@@ -147,7 +151,9 @@ export function DashboardTable({
       })),
       { label: t.kpiOverdue, value: kpis.overdue, attn: true },
     ],
-    [kpis],
+    // Recompute when the locale (and thus `t`) changes so labels re-translate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [kpis, t],
   );
 
   const hasFilters =
@@ -242,7 +248,7 @@ export function DashboardTable({
         <span className="ml-auto pb-2 text-sm tabular-nums text-muted-foreground">
           {total === 0
             ? `0 ${t.dashboardTitle.toLowerCase()}`
-            : `${rangeStart}–${rangeEnd} of ${total}`}
+            : `${rangeStart}–${rangeEnd} ${t.rangeOf} ${total}`}
         </span>
       </div>
 
@@ -272,7 +278,7 @@ export function DashboardTable({
                 return (
                   <TableRow
                     key={o.id}
-                    onClick={() => router.push(`/obligations/${o.id}`)}
+                    onClick={() => router.push(`/${lang}/obligations/${o.id}`)}
                     className="cursor-pointer border-l-[3px]"
                     style={{ borderLeftColor: overdue ? 'var(--destructive)' : 'transparent' }}
                   >
@@ -280,7 +286,7 @@ export function DashboardTable({
                       <div className="flex flex-col gap-0.5">
                         <span className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/obligations/${o.id}`}
+                            href={`/${lang}/obligations/${o.id}`}
                             className="font-medium hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
