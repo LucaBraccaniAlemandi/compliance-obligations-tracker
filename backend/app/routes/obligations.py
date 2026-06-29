@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app import models, schemas
 from app.core.database import get_db
 from app.core.errors import NotFoundError
-from app.services.obligation_status import ObligationStatusService
+from app.services.obligation_status import (
+    ConcurrentModification,
+    ObligationStatusService,
+)
 
 router = APIRouter(prefix="/obligations", tags=["obligations"])
 
@@ -56,8 +60,22 @@ def update_obligation_status(
     db: Session = Depends(get_db),
 ):
     obligation = _get_or_404(db, obligation_id)
+    # Client precondition: reject fast if the caller acted on a stale view.
+    if (
+        payload.expected_version is not None
+        and payload.expected_version != obligation.version
+    ):
+        raise ConcurrentModification(payload.expected_version, obligation.version)
     ObligationStatusService.apply(obligation, payload.status)
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        # DB backstop: another writer bumped the version between our read and
+        # commit. version_id_col's UPDATE matched 0 rows.
+        db.rollback()
+        raise ConcurrentModification(
+            payload.expected_version or obligation.version, obligation.version
+        )
     db.refresh(obligation)
     return obligation
 

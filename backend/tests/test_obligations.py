@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_health(client):
     resp = client.get("/health")
     assert resp.status_code == 200
@@ -172,3 +175,94 @@ def test_history_not_written_on_invalid_transition(client):
 
     history = client.get(f"api/obligations/{oid}").json()["status_history"]
     assert history == []
+
+
+def test_version_starts_at_one_and_increments(client):
+    body = client.post("api/obligations", json=_payload()).json()
+    assert body["version"] == 1
+
+    resp = client.patch(f"api/obligations/{body['id']}/status", json={"status": "in_progress"})
+    assert resp.json()["version"] == 2
+
+
+def test_status_with_matching_expected_version(client):
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+
+    resp = client.patch(
+        f"api/obligations/{oid}/status",
+        json={"status": "in_progress", "expected_version": 1},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "in_progress"
+
+
+def test_status_stale_expected_version_conflicts(client):
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+    # bump to version 2
+    client.patch(f"api/obligations/{oid}/status", json={"status": "in_progress"})
+
+    # caller still thinks it's version 1
+    resp = client.patch(
+        f"api/obligations/{oid}/status",
+        json={"status": "submitted", "expected_version": 1},
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "CONCURRENT_MODIFICATION"
+
+
+def test_stale_expected_version_writes_no_history(client):
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+    client.patch(f"api/obligations/{oid}/status", json={"status": "in_progress"})
+
+    client.patch(
+        f"api/obligations/{oid}/status",
+        json={"status": "submitted", "expected_version": 1},
+    )  # 409, rejected
+
+    history = client.get(f"api/obligations/{oid}").json()["status_history"]
+    # only the one successful transition recorded
+    assert [(h["from_status"], h["to_status"]) for h in history] == [
+        ("pending", "in_progress"),
+    ]
+
+
+def test_version_id_col_blocks_concurrent_commit():
+    # Proves the DB backstop: two sessions load the same row, the second
+    # commit fails with StaleDataError once the first bumped the version.
+    # TestClient can't overlap requests on the shared connection, so assert
+    # at the ORM layer directly.
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.orm.exc import StaleDataError
+    from sqlalchemy.pool import StaticPool
+
+    from app.core.database import Base
+    from app.models import Obligation, ObligationStatus
+
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+
+    seed = Session()
+    seed.add(
+        Obligation(type="annual_report", title="x", owner="a", company_tax_id="12-3456789")
+    )
+    seed.commit()
+    oid = seed.query(Obligation).one().id
+    seed.close()
+
+    s1, s2 = Session(), Session()
+    o1 = s1.get(Obligation, oid)
+    o2 = s2.get(Obligation, oid)
+
+    o1.status = ObligationStatus.in_progress
+    s1.commit()  # version 1 -> 2
+
+    o2.status = ObligationStatus.in_progress
+    with pytest.raises(StaleDataError):
+        s2.commit()  # still expects version 1 -> 0 rows matched
+
+    s1.close()
+    s2.close()

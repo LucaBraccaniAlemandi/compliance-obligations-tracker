@@ -47,6 +47,12 @@ class Obligation(Base):
     document_path = Column(String(512), nullable=True)
     company_tax_id = Column(String(64), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Optimistic-lock counter. SQLAlchemy bumps it on every UPDATE and adds
+    # `WHERE version = :old`, so a concurrent writer that read the same row
+    # loses with StaleDataError instead of silently overwriting it.
+    version = Column(Integer, nullable=False, default=1)
+
+    __mapper_args__ = {"version_id_col": version}
 
     status_history = relationship(
         "ObligationStatusHistory",
