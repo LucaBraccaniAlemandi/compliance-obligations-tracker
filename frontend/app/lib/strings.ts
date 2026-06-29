@@ -78,7 +78,6 @@ export const t = {
   detailDue: 'Due date',
   detailType: 'Type',
   detailTaxId: 'Company tax ID',
-  taxidNote: 'masked',
   requiresDoc: 'Requires document',
   yes: 'Yes',
   no: 'No',

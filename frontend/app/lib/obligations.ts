@@ -30,7 +30,7 @@ function fromDto(d: ObligationDto): Obligation {
     // Derived server-side; the UI does not recompute it.
     overdue: d.overdue,
     // Backend does not track a status-change history yet.
-    history: [],
+    status_history: d.status_history ?? [],
   };
 }
 
