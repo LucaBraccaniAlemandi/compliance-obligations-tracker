@@ -2,7 +2,12 @@ import 'server-only';
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { apiGet, ApiError } from './api';
-import type { Obligation, ObligationDto } from './types';
+import type {
+  Obligation,
+  ObligationDto,
+  ObligationKpis,
+  ObligationKpisDto,
+} from './types';
 
 /**
  * Read functions for obligations.
@@ -39,6 +44,15 @@ function fromDto(d: ObligationDto): Obligation {
 export const getObligations = cache(async (): Promise<Obligation[]> => {
   const dtos = await apiGet<ObligationDto[]>('/api/obligations');
   return dtos.map(fromDto);
+});
+
+export const getObligationKpis = cache(async (): Promise<ObligationKpis> => {
+  const dto = await apiGet<ObligationKpisDto>('/api/obligations/kpis');
+  return {
+    total: dto.total,
+    byStatus: dto.by_status,
+    overdue: dto.overdue,
+  };
 });
 
 export const getObligation = cache(async (id: string): Promise<Obligation> => {
