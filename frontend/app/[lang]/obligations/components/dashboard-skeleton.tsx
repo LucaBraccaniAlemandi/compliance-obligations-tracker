@@ -1,8 +1,7 @@
-import { t } from '@/app/lib/strings';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function DashboardSkeleton() {
+export function DashboardSkeleton({ label }: { label: string }) {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
@@ -22,7 +21,7 @@ export function DashboardSkeleton() {
           </div>
         ))}
       </Card>
-      <p className="text-sm text-muted-foreground">{t.loading}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }

@@ -4,38 +4,39 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { statusBadgeVariant } from '@/app/lib/obligations-domain';
-import { STATUS_LABELS, TYPE_LABELS, t } from '@/app/lib/strings';
+import { getDictionary } from '@/app/lib/dictionaries/get';
+import { intlLocale, type Locale } from '@/app/lib/dictionaries/config';
 import { ObligationActions, AttachDocumentButton } from './obligation-actions';
 import type { ObligationStatus } from '@/app/lib/types';
-
-const dateFmt = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-});
-const dateTimeFmt = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-const fmtDate = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? iso : dateFmt.format(d);
-};
-const fmtDateTime = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : dateTimeFmt.format(d);
-};
 
 export default async function ObligationDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ lang: Locale; id: string }>;
 }) {
-  const { id } = await params;
+  const { lang, id } = await params;
+  const { t, STATUS_LABELS, TYPE_LABELS } = await getDictionary(lang);
+
+  const dateFmt = new Intl.DateTimeFormat(intlLocale[lang], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+  const dateTimeFmt = new Intl.DateTimeFormat(intlLocale[lang], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const fmtDate = (iso: string) => {
+    const d = new Date(`${iso}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? iso : dateFmt.format(d);
+  };
+  const fmtDateTime = (iso: string) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : dateTimeFmt.format(d);
+  };
 
   const obligation = await getObligationOrNotFound(id);
   const overdue = obligation.overdue;
@@ -44,7 +45,7 @@ export default async function ObligationDetailPage({
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-9 pb-20">
       <Link
-        href="/obligations"
+        href={`/${lang}/obligations`}
         className="mb-4 inline-block text-sm text-primary hover:underline"
       >
         ← {t.back}
@@ -71,7 +72,7 @@ export default async function ObligationDetailPage({
           </span>
         </div>
         <Button asChild variant="outline" className="rounded-full">
-          <Link href={`/obligations/${obligation.id}/edit`}>{t.edit}</Link>
+          <Link href={`/${lang}/obligations/${obligation.id}/edit`}>{t.edit}</Link>
         </Button>
       </div>
 

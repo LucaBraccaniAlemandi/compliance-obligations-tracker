@@ -3,9 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { apiPost, apiPatch, apiDelete, ApiError } from './api';
 import { getObligation } from './obligations';
-import { t } from './strings';
+import { getRequestDictionary } from './dictionaries/server';
+import type { Dictionary } from './dictionaries/en';
 import {
-  obligationFormSchema,
+  buildObligationFormSchema,
+  validationMessages,
   readObligationForm,
   type ObligationFormValues,
 } from './validation';
@@ -32,8 +34,10 @@ import type {
 
 function validateForm(
   formData: FormData,
+  dict: Dictionary,
 ): { ok: true; data: ObligationFormValues } | { ok: false; fieldErrors: FieldErrors } {
-  const parsed = obligationFormSchema.safeParse(readObligationForm(formData));
+  const schema = buildObligationFormSchema(validationMessages(dict.t));
+  const parsed = schema.safeParse(readObligationForm(formData));
   if (parsed.success) {
     return { ok: true, data: parsed.data };
   }
@@ -61,9 +65,10 @@ export async function createObligation(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const result = validateForm(formData);
+  const dict = await getRequestDictionary();
+  const result = validateForm(formData, dict);
   if (!result.ok) {
-    return { ok: false, error: 'Validation failed.', fieldErrors: result.fieldErrors };
+    return { ok: false, error: dict.t.validationFailed, fieldErrors: result.fieldErrors };
   }
   try {
     // company_tax_id is only accepted on create.
@@ -71,10 +76,11 @@ export async function createObligation(
       ...toEditablePayload(result.data),
       company_tax_id: result.data.companyTaxId,
     });
-    revalidatePath('/obligations');
+    // Routes are nested under `[lang]`; revalidate every locale variant.
+    revalidatePath('/[lang]/obligations', 'page');
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: toMessage(err) };
+    return { ok: false, error: toMessage(err, dict) };
   }
 }
 
@@ -83,18 +89,20 @@ export async function updateObligation(
   _prev: ActionResult | undefined,
   formData: FormData,
 ): Promise<ActionResult> {
-  const result = validateForm(formData);
+  const dict = await getRequestDictionary();
+  const result = validateForm(formData, dict);
   if (!result.ok) {
-    return { ok: false, error: 'Validation failed.', fieldErrors: result.fieldErrors };
+    return { ok: false, error: dict.t.validationFailed, fieldErrors: result.fieldErrors };
   }
   try {
     // PATCH (not PUT); status and company_tax_id are not editable here.
     await apiPatch<ObligationDto>(`/api/obligations/${id}`, toEditablePayload(result.data));
-    revalidatePath('/obligations');
-    revalidatePath(`/obligations/${id}`);
+    // Routes are nested under `[lang]`; revalidate every locale variant.
+    revalidatePath('/[lang]/obligations', 'page');
+    revalidatePath('/[lang]/obligations/[id]', 'page');
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: toMessage(err) };
+    return { ok: false, error: toMessage(err, dict) };
   }
 }
 
@@ -120,6 +128,7 @@ export async function transitionObligation(
   to: ObligationStatus,
   expectedVersion: number,
 ): Promise<TransitionResult> {
+  const dict = await getRequestDictionary();
   try {
     // Dedicated transition route enforces the backend state machine.
     // expected_version lets the backend reject changes made against stale reads.
@@ -127,8 +136,9 @@ export async function transitionObligation(
       status: to,
       expected_version: expectedVersion,
     });
-    revalidatePath('/obligations');
-    revalidatePath(`/obligations/${id}`);
+    // Routes are nested under `[lang]`; revalidate every locale variant.
+    revalidatePath('/[lang]/obligations', 'page');
+    revalidatePath('/[lang]/obligations/[id]', 'page');
     return { ok: true, status: dto.status, version: dto.version };
   } catch (err) {
     // A version conflict: refetch so the UI can show who-won state, then let the
@@ -137,41 +147,44 @@ export async function transitionObligation(
       const envelope = err.body as ErrorEnvelope;
       if (envelope?.error?.code === 'CONCURRENT_MODIFICATION') {
         const fresh = await getObligation(id);
-        revalidatePath(`/obligations/${id}`);
+        revalidatePath('/[lang]/obligations/[id]', 'page');
         return {
           ok: false,
           code: 'CONCURRENT_MODIFICATION',
-          error: messageForCode('CONCURRENT_MODIFICATION', envelope.error?.params ?? {}),
+          error: messageForCode('CONCURRENT_MODIFICATION', envelope.error?.params ?? {}, dict),
           status: fresh.status,
           version: fresh.version,
         };
       }
     }
-    return { ok: false, error: toMessage(err) };
+    return { ok: false, error: toMessage(err, dict) };
   }
 }
 
 export async function attachDocument(id: string): Promise<ActionResult> {
+  const dict = await getRequestDictionary();
   try {
     // Backend models the document as a nullable path, not a boolean.
     await apiPatch<ObligationDto>(`/api/obligations/${id}`, {
       document_path: `${id}.pdf`,
     });
-    revalidatePath(`/obligations/${id}`);
+    revalidatePath('/[lang]/obligations/[id]', 'page');
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: toMessage(err) };
+    return { ok: false, error: toMessage(err, dict) };
   }
 }
 
 export async function deleteObligation(formData: FormData): Promise<ActionResult> {
+  const dict = await getRequestDictionary();
   const id = String(formData.get('id') ?? '');
   try {
     await apiDelete(`/api/obligations/${id}`);
-    revalidatePath('/obligations');
+    // Routes are nested under `[lang]`; revalidate every locale variant.
+    revalidatePath('/[lang]/obligations', 'page');
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: toMessage(err) };
+    return { ok: false, error: toMessage(err, dict) };
   }
 }
 
@@ -180,48 +193,57 @@ type ErrorEnvelope = {
   error?: { code?: string; params?: Record<string, unknown> };
 };
 
-const STATUS_TEXT: Record<string, string> = {
-  pending: 'pending',
-  in_progress: 'in progress',
-  submitted: 'submitted',
-  done: 'done',
-};
+/** Replaces `{key}` placeholders in a message template with `vars[key]`. */
+function interpolate(template: string, vars: Record<string, unknown>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? ''));
+}
 
-function statusText(v: unknown): string {
-  return STATUS_TEXT[String(v)] ?? String(v);
+/** Localized status label for interpolation; falls back to the raw value. */
+function statusText(dict: Dictionary, v: unknown): string {
+  const key = String(v) as ObligationStatus;
+  return dict.STATUS_LABELS[key] ?? String(v);
 }
 
 /**
- * Maps a backend error envelope to a friendly message, interpolating `params`.
- * The backend sends no human text — only a machine `code` + structured params.
+ * Maps a backend error envelope to a friendly, localized message, interpolating
+ * `params`. The backend sends no human text — only a machine `code` + structured
+ * params.
  */
-function messageForCode(code: string, params: Record<string, unknown>): string {
+function messageForCode(
+  code: string,
+  params: Record<string, unknown>,
+  dict: Dictionary,
+): string {
+  const { t } = dict;
   switch (code) {
     case 'VALIDATION_ERROR':
-      return 'Please check the highlighted fields and try again.';
+      return t.errValidation;
     case 'NOT_FOUND':
-      return 'This obligation no longer exists. It may have been deleted.';
+      return t.errNotFound;
     case 'INVALID_STATUS_TRANSITION':
-      return `Can't move this obligation from ${statusText(params.current)} to ${statusText(params.target)}.`;
+      return interpolate(t.errInvalidTransition, {
+        from: statusText(dict, params.current),
+        to: statusText(dict, params.target),
+      });
     case 'DOCUMENT_REQUIRED':
-      return 'A required document must be attached before this obligation can be submitted.';
+      return t.errDocumentRequired;
     case 'CONCURRENT_MODIFICATION':
       return t.toastConcurrentModification;
     case 'HTTP_ERROR':
-      return `The server rejected this request (${params.status ?? 'error'}).`;
+      return interpolate(t.errHttp, { status: params.status ?? 'error' });
     case 'INTERNAL_ERROR':
-      return 'The server hit an unexpected error. Please try again.';
+      return t.errInternal;
     default:
-      return 'Something went wrong. Please try again.';
+      return t.errGeneric;
   }
 }
 
-function toMessage(err: unknown): string {
+function toMessage(err: unknown, dict: Dictionary): string {
   if (err instanceof ApiError) {
     const envelope = err.body as ErrorEnvelope;
     const code = envelope?.error?.code;
-    if (code) return messageForCode(code, envelope.error?.params ?? {});
-    return `Backend error (${err.status}).`;
+    if (code) return messageForCode(code, envelope.error?.params ?? {}, dict);
+    return interpolate(dict.t.errBackend, { status: err.status });
   }
-  return 'Something went wrong. Please try again.';
+  return dict.t.errGeneric;
 }
