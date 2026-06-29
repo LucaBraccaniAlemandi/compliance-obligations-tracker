@@ -34,6 +34,14 @@ class ObligationStatusUpdate(BaseModel):
     status: ObligationStatus
 
 
+class ObligationStatusHistoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    from_status: ObligationStatus
+    to_status: ObligationStatus
+    changed_at: datetime
+
+
 class ObligationRead(ObligationBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,3 +63,7 @@ class ObligationRead(ObligationBase):
         if self.status in (ObligationStatus.submitted, ObligationStatus.done):
             return False
         return self.due_date < date.today()
+
+
+class ObligationDetailRead(ObligationRead):
+    status_history: list[ObligationStatusHistoryRead] = []

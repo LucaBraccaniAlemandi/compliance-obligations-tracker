@@ -1,5 +1,5 @@
 from app.core.errors import AppError
-from app.models import Obligation, ObligationStatus
+from app.models import Obligation, ObligationStatus, ObligationStatusHistory
 
 
 class InvalidStatusTransition(AppError):
@@ -44,4 +44,8 @@ class ObligationStatusService:
     @classmethod
     def apply(cls, obligation: Obligation, target: ObligationStatus) -> None:
         cls.validate(obligation, target)
+        previous = obligation.status
         obligation.status = target
+        obligation.status_history.append(
+            ObligationStatusHistory(from_status=previous, to_status=target)
+        )
