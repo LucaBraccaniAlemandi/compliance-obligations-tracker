@@ -38,9 +38,8 @@ export default async function ObligationDetailPage({
   const { id } = await params;
 
   const obligation = await getObligationOrNotFound(id);
-
   const overdue = obligation.overdue;
-  const history = [...obligation.history].reverse();
+  const history = [...obligation.status_history].reverse();
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-9 pb-20">
@@ -135,12 +134,12 @@ export default async function ObligationDetailPage({
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm">
                         <span className="text-muted-foreground">
-                          {STATUS_LABELS[h.from as ObligationStatus]}
+                          {STATUS_LABELS[h.from_status as ObligationStatus]}
                         </span>{' '}
-                        → <span className="font-medium">{STATUS_LABELS[h.to]}</span>
+                        → <span className="font-medium">{STATUS_LABELS[h.to_status]}</span>
                       </span>
                       <span className="text-[11px] tabular-nums text-muted-foreground">
-                        {fmtDateTime(h.at)}
+                        {fmtDateTime(h.changed_at)}
                       </span>
                     </div>
                   </li>
@@ -169,9 +168,6 @@ export default async function ObligationDetailPage({
                 <dd className="m-0 flex items-center gap-2">
                   <span className="font-mono text-sm tabular-nums">
                     {obligation.companyTaxId}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    ({t.taxidNote})
                   </span>
                 </dd>
               </div>

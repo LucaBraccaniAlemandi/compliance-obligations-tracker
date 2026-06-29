@@ -15,10 +15,10 @@ export type ObligationStatus = 'pending' | 'in_progress' | 'submitted' | 'done';
 
 /** One entry in an obligation's status-change audit trail. */
 export interface StatusChange {
-  from: ObligationStatus;
-  to: ObligationStatus;
+  from_status: ObligationStatus;
+  to_status: ObligationStatus;
   /** ISO 8601 datetime string. */
-  at: string;
+  changed_at: string;
 }
 
 export interface Obligation {
@@ -36,7 +36,7 @@ export interface Obligation {
   companyTaxId: string;
   /** Derived and supplied by the backend — not recomputed client-side. */
   overdue: boolean;
-  history: StatusChange[];
+  status_history: StatusChange[];
 }
 
 /**
@@ -59,6 +59,7 @@ export interface ObligationDto {
   company_tax_id: string;
   created_at: string;
   overdue: boolean;
+  status_history: StatusChange[];
 }
 
 /** Field-level validation errors keyed by form field name. */
