@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { createObligation } from '@/app/lib/actions';
 import { t } from '@/app/lib/strings';
-import { ObligationForm } from '../obligation-form';
+import { ObligationForm } from '../components/obligation-form';
 
 export default function NewObligationPage() {
   return (
@@ -13,7 +13,11 @@ export default function NewObligationPage() {
         ← {t.back}
       </Link>
       <h1 className="mb-5 text-2xl font-light tracking-tight">{t.createTitle}</h1>
-      <ObligationForm action={createObligation} redirectTo="/obligations" />
+      <ObligationForm
+        action={createObligation}
+        redirectTo="/obligations"
+        successMessage={t.toastCreated}
+      />
     </main>
   );
 }

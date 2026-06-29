@@ -104,4 +104,10 @@ export const t = {
   taxidHelp: 'Stored securely and shown masked after saving.',
   taxidLocked: "Tax ID can't be changed after creation.",
   serverErrorBanner: "Couldn't save. Please review the errors below.",
+  toastCreated: 'Obligation created.',
+  toastUpdated: 'Obligation updated.',
+  toastSaveError: "Couldn't save. Please review the errors below.",
+  toastStatusUpdated: 'Status updated.',
+  toastDocAttached: 'Document attached.',
+  toastActionFailed: 'Action failed.',
 } as const;

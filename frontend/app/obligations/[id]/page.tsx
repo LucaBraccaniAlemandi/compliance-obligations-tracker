@@ -37,10 +37,10 @@ export default async function ObligationDetailPage({
 }) {
   const { id } = await params;
 
-  const o = await getObligationOrNotFound(id);
+  const obligation = await getObligationOrNotFound(id);
 
-  const overdue = o.overdue;
-  const history = [...o.history].reverse();
+  const overdue = obligation.overdue;
+  const history = [...obligation.history].reverse();
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-9 pb-20">
@@ -54,9 +54,9 @@ export default async function ObligationDetailPage({
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-light tracking-tight">{o.title}</h1>
-            <Badge variant={statusBadgeVariant(o.status)}>
-              {STATUS_LABELS[o.status]}
+            <h1 className="text-2xl font-light tracking-tight">{obligation.title}</h1>
+            <Badge variant={statusBadgeVariant(obligation.status)}>
+              {STATUS_LABELS[obligation.status]}
             </Badge>
             {overdue ? (
               <Badge
@@ -68,11 +68,11 @@ export default async function ObligationDetailPage({
             ) : null}
           </div>
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-            {o.id}
+            {obligation.id}
           </span>
         </div>
         <Button asChild variant="outline" className="rounded-full">
-          <Link href={`/obligations/${o.id}/edit`}>{t.edit}</Link>
+          <Link href={`/obligations/${obligation.id}/edit`}>{t.edit}</Link>
         </Button>
       </div>
 
@@ -82,7 +82,7 @@ export default async function ObligationDetailPage({
           <Card className="gap-2 p-6">
             <SectionLabel>{t.detailDescription}</SectionLabel>
             <p className="text-base leading-relaxed text-foreground/85">
-              {o.description}
+              {obligation.description}
             </p>
           </Card>
 
@@ -91,18 +91,18 @@ export default async function ObligationDetailPage({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-9 items-center justify-center rounded border bg-muted font-mono text-[9px] text-muted-foreground">
-                  {o.hasDocument ? 'PDF' : '—'}
+                  {obligation.hasDocument ? 'PDF' : '—'}
                 </span>
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">
-                    {o.hasDocument ? t.docAttached : t.docMissing}
+                    {obligation.hasDocument ? t.docAttached : t.docMissing}
                   </span>
-                  {o.hasDocument ? (
+                  {obligation.hasDocument ? (
                     <span className="font-mono text-[11px] text-muted-foreground">
-                      {o.type}.pdf
+                      {obligation.type}.pdf
                     </span>
                   ) : null}
-                  {o.requiresDocument && !o.hasDocument ? (
+                  {obligation.requiresDocument && !obligation.hasDocument ? (
                     <Badge
                       variant="secondary"
                       className="w-fit text-[9px] uppercase tracking-wide"
@@ -112,8 +112,8 @@ export default async function ObligationDetailPage({
                   ) : null}
                 </div>
               </div>
-              {o.requiresDocument && !o.hasDocument ? (
-                <AttachDocumentButton id={o.id} />
+              {obligation.requiresDocument && !obligation.hasDocument ? (
+                <AttachDocumentButton id={obligation.id} />
               ) : null}
             </div>
           </Card>
@@ -154,21 +154,21 @@ export default async function ObligationDetailPage({
         <div className="flex flex-col gap-4">
           <Card className="p-6">
             <dl className="flex flex-col gap-3.5">
-              <Meta label={t.detailType} value={TYPE_LABELS[o.type]} />
-              <Meta label={t.detailOwner} value={o.owner} />
+              <Meta label={t.detailType} value={TYPE_LABELS[obligation.type]} />
+              <Meta label={t.detailOwner} value={obligation.owner} />
               <Meta
                 label={t.detailDue}
-                value={fmtDate(o.dueDate)}
+                value={fmtDate(obligation.dueDate)}
                 mono
               />
-              <Meta label={t.requiresDoc} value={o.requiresDocument ? t.yes : t.no} />
+              <Meta label={t.requiresDoc} value={obligation.requiresDocument ? t.yes : t.no} />
               <div className="flex flex-col gap-1">
                 <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {t.detailTaxId}
                 </dt>
                 <dd className="m-0 flex items-center gap-2">
                   <span className="font-mono text-sm tabular-nums">
-                    {o.companyTaxId}
+                    {obligation.companyTaxId}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     ({t.taxidNote})
@@ -183,7 +183,7 @@ export default async function ObligationDetailPage({
             <p className="mb-3.5 text-[11px] leading-snug text-muted-foreground">
               {t.actionsNote}
             </p>
-            <ObligationActions obligation={o} />
+            <ObligationActions obligation={obligation} />
           </Card>
         </div>
       </div>

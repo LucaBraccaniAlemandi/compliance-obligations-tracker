@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { transitionObligation, attachDocument } from '@/app/lib/actions';
 import { allowedTransitions } from '@/app/lib/obligations-domain';
@@ -11,16 +12,18 @@ import type { Obligation, ObligationStatus } from '@/app/lib/types';
 export function ObligationActions({ obligation }: { obligation: Obligation }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   const transitions = allowedTransitions(obligation.status);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
-    setError(null);
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) setError(res.error ?? 'Action failed.');
-      else router.refresh();
+      if (!res.ok) {
+        toast.error(res.error ?? t.toastActionFailed);
+      } else {
+        toast.success(t.toastStatusUpdated);
+        router.refresh();
+      }
     });
   }
 
@@ -30,11 +33,6 @@ export function ObligationActions({ obligation }: { obligation: Obligation }) {
 
   return (
     <div className="flex flex-col gap-3.5">
-      {error ? (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
       {/*
         Transition rules (e.g. a required document before submit) are enforced
         by the backend. We attempt the transition and surface any error it
@@ -73,7 +71,12 @@ export function AttachDocumentButton({ id }: { id: string }) {
       onClick={() =>
         startTransition(async () => {
           const res = await attachDocument(id);
-          if (res.ok) router.refresh();
+          if (res.ok) {
+            toast.success(t.toastDocAttached);
+            router.refresh();
+          } else {
+            toast.error(res.error ?? t.toastActionFailed);
+          }
         })
       }
     >

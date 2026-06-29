@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import './globals.css';
+import { Toaster } from '@/components/ui/sonner';
 import { t } from './lib/strings';
 
 const inter = Inter({
@@ -45,6 +46,7 @@ export default function RootLayout({
           </nav>
         </header>
         <div className="flex-1">{children}</div>
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );

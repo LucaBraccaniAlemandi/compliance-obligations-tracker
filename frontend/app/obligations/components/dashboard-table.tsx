@@ -128,7 +128,7 @@ export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
             value={filterType}
             onValueChange={(v) => setFilterType(v as 'all' | ObligationType)}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-auto min-w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

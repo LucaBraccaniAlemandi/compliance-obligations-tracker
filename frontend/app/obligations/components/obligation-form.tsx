@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState, useEffect, useId, useState } from 'react';
+import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,6 +55,8 @@ interface Props {
   defaults?: ObligationFormDefaults;
   /** Where to navigate after a successful save. */
   redirectTo: string;
+  /** Success toast message (e.g. "Obligation created."). */
+  successMessage: string;
   /**
    * Whether the company tax id can be edited. The backend only accepts it on
    * create, so edit forms pass `false` to render it read-only.
@@ -65,6 +68,7 @@ export function ObligationForm({
   action,
   defaults = BLANK,
   redirectTo,
+  successMessage,
   taxIdEditable = true,
 }: Props) {
   const router = useRouter();
@@ -78,9 +82,22 @@ export function ObligationForm({
   // Controlled `type` so the native <select> value reaches the server action.
   const [type, setType] = useState<ObligationType>(defaults.type);
 
+  // Fire a toast once per server response. useActionState hands back a fresh
+  // object each dispatch, so comparing identity guards against StrictMode /
+  // re-render double-fires.
+  const handledState = useRef<ActionResult | undefined>(undefined);
   useEffect(() => {
-    if (state?.ok) router.push(redirectTo);
-  }, [state, redirectTo, router]);
+    if (!state || state === handledState.current) return;
+    handledState.current = state;
+
+    if (state.ok) {
+      toast.success(successMessage);
+      router.push(redirectTo);
+    } else {
+      // Field-level issues are shown inline; this surfaces the headline.
+      toast.error(state.error);
+    }
+  }, [state, redirectTo, router, successMessage]);
 
   const serverErrors = state && !state.ok ? state.fieldErrors ?? {} : {};
   const errors: FieldErrors = { ...serverErrors, ...clientErrors };

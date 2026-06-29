@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getObligationOrNotFound } from '@/app/lib/obligations';
 import { updateObligation } from '@/app/lib/actions';
 import { t } from '@/app/lib/strings';
-import { ObligationForm } from '../../obligation-form';
+import { ObligationForm } from '../../components/obligation-form';
 
 export default async function EditObligationPage({
   params,
@@ -28,6 +28,7 @@ export default async function EditObligationPage({
       <ObligationForm
         action={action}
         redirectTo={`/obligations/${id}`}
+        successMessage={t.toastUpdated}
         taxIdEditable={false}
         defaults={{
           type: obligation.type,

@@ -135,18 +135,51 @@ export async function deleteObligation(formData: FormData): Promise<ActionResult
   }
 }
 
-/** Maps known backend error codes to friendly messages. */
-const ERROR_MESSAGES: Record<string, string> = {
-  DOCUMENT_REQUIRED:
-    'A required document must be attached before this obligation can be submitted.',
-  INVALID_STATUS_TRANSITION: 'That status change is not allowed.',
+/** Backend error envelope: `{ "error": { "code", "params" } }`. */
+type ErrorEnvelope = {
+  error?: { code?: string; params?: Record<string, unknown> };
 };
+
+const STATUS_TEXT: Record<string, string> = {
+  pending: 'pending',
+  in_progress: 'in progress',
+  submitted: 'submitted',
+  done: 'done',
+};
+
+function statusText(v: unknown): string {
+  return STATUS_TEXT[String(v)] ?? String(v);
+}
+
+/**
+ * Maps a backend error envelope to a friendly message, interpolating `params`.
+ * The backend sends no human text — only a machine `code` + structured params.
+ */
+function messageForCode(code: string, params: Record<string, unknown>): string {
+  switch (code) {
+    case 'VALIDATION_ERROR':
+      return 'Please check the highlighted fields and try again.';
+    case 'NOT_FOUND':
+      return 'This obligation no longer exists. It may have been deleted.';
+    case 'INVALID_STATUS_TRANSITION':
+      return `Can't move this obligation from ${statusText(params.current)} to ${statusText(params.target)}.`;
+    case 'DOCUMENT_REQUIRED':
+      return 'A required document must be attached before this obligation can be submitted.';
+    case 'HTTP_ERROR':
+      return `The server rejected this request (${params.status ?? 'error'}).`;
+    case 'INTERNAL_ERROR':
+      return 'The server hit an unexpected error. Please try again.';
+    default:
+      return 'Something went wrong. Please try again.';
+  }
+}
 
 function toMessage(err: unknown): string {
   if (err instanceof ApiError) {
-    const code = (err.body as { error?: { code?: string } })?.error?.code;
-    if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
-    return `Backend error (${err.status})`;
+    const envelope = err.body as ErrorEnvelope;
+    const code = envelope?.error?.code;
+    if (code) return messageForCode(code, envelope.error?.params ?? {});
+    return `Backend error (${err.status}).`;
   }
   return 'Something went wrong. Please try again.';
 }
