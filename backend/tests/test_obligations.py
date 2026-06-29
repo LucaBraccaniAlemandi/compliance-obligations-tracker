@@ -226,6 +226,55 @@ def test_stale_expected_version_writes_no_history(client):
     ]
 
 
+def test_kpis_empty(client):
+    resp = client.get("api/obligations/kpis")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 0
+    assert body["overdue"] == 0
+    assert body["by_status"] == {
+        "pending": 0,
+        "in_progress": 0,
+        "submitted": 0,
+        "done": 0,
+    }
+
+
+def test_kpis_counts_by_status_and_total(client):
+    # 2 pending (default), 1 advanced to in_progress
+    client.post("api/obligations", json=_payload())
+    client.post("api/obligations", json=_payload())
+    oid = client.post("api/obligations", json=_payload()).json()["id"]
+    client.patch(f"api/obligations/{oid}/status", json={"status": "in_progress"})
+
+    body = client.get("api/obligations/kpis").json()
+    assert body["total"] == 3
+    assert body["by_status"]["pending"] == 2
+    assert body["by_status"]["in_progress"] == 1
+
+
+def test_kpis_overdue_counts_past_due_open(client):
+    client.post("api/obligations", json=_payload(due_date="2000-01-01"))  # overdue
+    client.post("api/obligations", json=_payload(due_date="2999-01-01"))  # future, not
+    client.post("api/obligations", json=_payload())  # no due date, not
+
+    body = client.get("api/obligations/kpis").json()
+    assert body["overdue"] == 1
+
+
+def test_kpis_overdue_excludes_closed(client):
+    oid = client.post(
+        "api/obligations", json=_payload(due_date="2000-01-01")
+    ).json()["id"]
+    # advance to submitted (closed) — requires_document defaults False
+    client.patch(f"api/obligations/{oid}/status", json={"status": "in_progress"})
+    client.patch(f"api/obligations/{oid}/status", json={"status": "submitted"})
+
+    body = client.get("api/obligations/kpis").json()
+    assert body["overdue"] == 0
+    assert body["by_status"]["submitted"] == 1
+
+
 def test_version_id_col_blocks_concurrent_commit():
     # Proves the DB backstop: two sessions load the same row, the second
     # commit fails with StaleDataError once the first bumped the version.
