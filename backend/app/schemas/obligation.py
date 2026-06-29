@@ -37,6 +37,12 @@ class ObligationStatusUpdate(BaseModel):
     expected_version: int | None = None
 
 
+class ObligationKpis(BaseModel):
+    total: int
+    by_status: dict[ObligationStatus, int]
+    overdue: int
+
+
 class ObligationStatusHistoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,6 +1,11 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
+
+from app.models import ObligationStatus
 
 from app import models, schemas
 from app.core.database import get_db
@@ -32,6 +37,39 @@ def create_obligation(payload: schemas.ObligationCreate, db: Session = Depends(g
 @router.get("", response_model=list[schemas.ObligationRead])
 def list_obligations(db: Session = Depends(get_db)):
     return db.query(models.Obligation).all()
+
+
+@router.get("/kpis", response_model=schemas.ObligationKpis)
+def obligation_kpis(db: Session = Depends(get_db)):
+    # Count per status, zero-filling statuses with no rows.
+    by_status = {status: 0 for status in ObligationStatus}
+    rows = (
+        db.query(models.Obligation.status, func.count())
+        .group_by(models.Obligation.status)
+        .all()
+    )
+    for status, count in rows:
+        by_status[status] = count
+
+    # Overdue rule mirrors schemas.ObligationRead.overdue: past due date and
+    # not yet closed (submitted/done are considered closed).
+    overdue = (
+        db.query(func.count())
+        .filter(
+            models.Obligation.due_date.isnot(None),
+            models.Obligation.due_date < date.today(),
+            models.Obligation.status.notin_(
+                [ObligationStatus.submitted, ObligationStatus.done]
+            ),
+        )
+        .scalar()
+    )
+
+    return schemas.ObligationKpis(
+        total=sum(by_status.values()),
+        by_status=by_status,
+        overdue=overdue,
+    )
 
 
 @router.get("/{obligation_id}", response_model=schemas.ObligationDetailRead)
