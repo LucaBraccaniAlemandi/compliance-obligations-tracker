@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { getObligations } from '@/app/lib/obligations';
+import { getObligations, getObligationKpis } from '@/app/lib/obligations';
+import type { Obligation, ObligationKpis } from '@/app/lib/types';
 import { ApiError } from '@/app/lib/api';
 import { t } from '@/app/lib/strings';
 import { Button } from '@/components/ui/button';
@@ -7,9 +8,11 @@ import { Card } from '@/components/ui/card';
 import { DashboardTable } from './dashboard-table';
 
 export async function DashboardContent() {
-  let obligations;
+  let obligations: Obligation[];
+  let kpis: ObligationKpis;
   try {
-    obligations = await getObligations();
+    // Independent reads — fetch in parallel to avoid a request waterfall.
+    [obligations, kpis] = await Promise.all([getObligations(), getObligationKpis()]);
   } catch (err) {
     const detail = err instanceof ApiError ? ` (status ${err.status})` : '';
     return (
@@ -38,5 +41,5 @@ export async function DashboardContent() {
     );
   }
 
-  return <DashboardTable obligations={obligations} />;
+  return <DashboardTable obligations={obligations} kpis={kpis} />;
 }

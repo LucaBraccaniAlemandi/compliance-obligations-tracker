@@ -66,6 +66,25 @@ export interface ObligationDto {
   status_history: StatusChange[];
 }
 
+/**
+ * Wire shape for GET /api/obligations/kpis (snake_case).
+ * `overdue` overlaps the `by_status` buckets — it's a separate metric, not a
+ * sum of them. Map via the adapter in `obligations.ts`.
+ */
+export interface ObligationKpisDto {
+  total: number;
+  by_status: Record<ObligationStatus, number>;
+  overdue: number;
+}
+
+/** UI domain shape for dashboard KPIs. */
+export interface ObligationKpis {
+  total: number;
+  byStatus: Record<ObligationStatus, number>;
+  /** Overlaps status buckets; render as its own card, never summed. */
+  overdue: number;
+}
+
 /** Field-level validation errors keyed by form field name. */
 export type FieldErrors = Partial<Record<string, string>>;
 

@@ -22,7 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Obligation, ObligationStatus, ObligationType } from '@/app/lib/types';
+import type {
+  Obligation,
+  ObligationKpis,
+  ObligationStatus,
+  ObligationType,
+} from '@/app/lib/types';
 import { statusBadgeVariant } from '@/app/lib/obligations-domain';
 import { STATUS_LABELS, TYPE_LABELS, t } from '@/app/lib/strings';
 
@@ -45,28 +50,38 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : dateFmt.format(d);
 }
 
-export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
+const STATUS_KPI_LABELS: Record<ObligationStatus, string> = {
+  pending: t.kpiPending,
+  in_progress: t.kpiInProgress,
+  submitted: t.kpiSubmitted,
+  done: t.kpiDone,
+};
+
+export function DashboardTable({
+  obligations,
+  kpis,
+}: {
+  obligations: Obligation[];
+  kpis: ObligationKpis;
+}) {
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState<'all' | ObligationStatus>('all');
   const [filterType, setFilterType] = useState<'all' | ObligationType>('all');
   const [overdueOnly, setOverdueOnly] = useState(false);
 
-  const kpis = useMemo(() => {
-    const count = (s: ObligationStatus) =>
-      obligations.filter((o) => o.status === s).length;
-    return [
-      { label: t.kpiTotal, value: obligations.length },
-      { label: t.kpiPending, value: count('pending') },
-      { label: t.kpiInProgress, value: count('in_progress') },
-      { label: t.kpiSubmitted, value: count('submitted') },
-      { label: t.kpiDone, value: count('done') },
-      {
-        label: t.kpiOverdue,
-        value: obligations.filter((o) => o.overdue).length,
-        attn: true,
-      },
-    ];
-  }, [obligations]);
+  // Backend-derived metrics. `overdue` overlaps the status buckets — render it
+  // as its own card; it is never summed into the totals.
+  const kpiCards = useMemo<{ label: string; value: number; attn?: boolean }[]>(
+    () => [
+      { label: t.kpiTotal, value: kpis.total },
+      ...STATUSES.map((s) => ({
+        label: STATUS_KPI_LABELS[s],
+        value: kpis.byStatus[s] ?? 0,
+      })),
+      { label: t.kpiOverdue, value: kpis.overdue, attn: true },
+    ],
+    [kpis],
+  );
 
   const rows = useMemo(() => {
     return obligations
@@ -82,7 +97,7 @@ export function DashboardTable({ obligations }: { obligations: Obligation[] }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {kpis.map((k) => (
+        {kpiCards.map((k) => (
           <Card key={k.label} className="gap-0 p-4">
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               {k.label}
