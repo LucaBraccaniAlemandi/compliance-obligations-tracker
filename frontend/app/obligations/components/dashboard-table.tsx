@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -23,21 +25,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type {
-  Obligation,
   ObligationKpis,
+  ObligationListParams,
+  ObligationPage,
   ObligationStatus,
-  ObligationType,
 } from '@/app/lib/types';
+import { encodeObligationParams } from '@/app/lib/obligation-search-params';
 import { statusBadgeVariant } from '@/app/lib/obligations-domain';
 import { STATUS_LABELS, TYPE_LABELS, t } from '@/app/lib/strings';
 
 const STATUSES: ObligationStatus[] = ['pending', 'in_progress', 'submitted', 'done'];
-const TYPES: ObligationType[] = [
-  'annual_report',
-  'franchise_tax',
-  'boi_report',
-  'registered_agent_renewal',
-];
 
 const dateFmt = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -57,17 +54,87 @@ const STATUS_KPI_LABELS: Record<ObligationStatus, string> = {
   done: t.kpiDone,
 };
 
+/** Tri-state overdue filter encoded as a Select value. */
+type OverdueValue = 'all' | 'true' | 'false';
+
+function overdueToValue(overdue: boolean | undefined): OverdueValue {
+  return overdue === undefined ? 'all' : overdue ? 'true' : 'false';
+}
+
 export function DashboardTable({
-  obligations,
+  page,
+  params,
   kpis,
 }: {
-  obligations: Obligation[];
+  page: ObligationPage;
+  params: ObligationListParams;
   kpis: ObligationKpis;
 }) {
   const router = useRouter();
-  const [filterStatus, setFilterStatus] = useState<'all' | ObligationStatus>('all');
-  const [filterType, setFilterType] = useState<'all' | ObligationType>('all');
-  const [overdueOnly, setOverdueOnly] = useState(false);
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
+  const { items, total, limit, offset } = page;
+  const activeStatuses = params.status ?? [];
+
+  /**
+   * Navigate to a new param set. Filter changes pass `resetOffset` so the user
+   * lands back on the first page; pagination keeps the current filters.
+   */
+  function navigate(next: ObligationListParams) {
+    const qs = encodeObligationParams(next).toString();
+    startTransition(() => {
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+    });
+  }
+
+  function toggleStatus(status: ObligationStatus, checked: boolean) {
+    const nextStatus = checked
+      ? [...activeStatuses, status]
+      : activeStatuses.filter((s) => s !== status);
+    navigate({
+      ...params,
+      status: nextStatus.length > 0 ? nextStatus : undefined,
+      offset: 0,
+    });
+  }
+
+  function setOverdue(value: OverdueValue) {
+    navigate({
+      ...params,
+      overdue: value === 'all' ? undefined : value === 'true',
+      offset: 0,
+    });
+  }
+
+  function clearFilters() {
+    navigate({ limit, offset: 0 });
+  }
+
+  // Title search: local state for responsive typing, debounced into the URL.
+  const [titleInput, setTitleInput] = useState(params.title ?? '');
+
+  // When the URL title changes from outside (Clear filters, browser
+  // back/forward), reset the input to match — using React's adjust-state-during-
+  // render pattern so the debounce effect below never re-pushes a stale value.
+  const urlTitle = params.title ?? '';
+  const [lastUrlTitle, setLastUrlTitle] = useState(urlTitle);
+  if (urlTitle !== lastUrlTitle) {
+    setLastUrlTitle(urlTitle);
+    setTitleInput(urlTitle);
+  }
+
+  useEffect(() => {
+    const current = params.title ?? '';
+    if (titleInput === current) return; // already in sync — nothing to push
+    const id = setTimeout(() => {
+      navigate({ ...params, title: titleInput || undefined, offset: 0 });
+    }, 300);
+    return () => clearTimeout(id);
+    // `navigate` is stable enough for this purpose; re-running on param change
+    // is intentional so a server-applied title resets the early-return guard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titleInput, params]);
 
   // Backend-derived metrics. `overdue` overlaps the status buckets — render it
   // as its own card; it is never summed into the totals.
@@ -83,16 +150,20 @@ export function DashboardTable({
     [kpis],
   );
 
-  const rows = useMemo(() => {
-    return obligations
-      .filter(
-        (o) =>
-          (filterStatus === 'all' || o.status === filterStatus) &&
-          (filterType === 'all' || o.type === filterType) &&
-          (!overdueOnly || o.overdue),
-      )
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  }, [obligations, filterStatus, filterType, overdueOnly]);
+  const hasFilters =
+    activeStatuses.length > 0 || params.overdue !== undefined || Boolean(params.title);
+
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + limit, total);
+  const canPrev = offset > 0;
+  const canNext = offset + limit < total;
+
+  function goPrev() {
+    navigate({ ...params, offset: Math.max(offset - limit, 0) });
+  }
+  function goNext() {
+    navigate({ ...params, offset: offset + limit });
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,119 +188,145 @@ export function DashboardTable({
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
             {t.filterStatus}
           </Label>
-          <Select
-            value={filterStatus}
-            onValueChange={(v) => setFilterStatus(v as 'all' | ObligationStatus)}
-          >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {STATUSES.map((s) => (
+              <Label
+                key={s}
+                className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+              >
+                <Checkbox
+                  checked={activeStatuses.includes(s)}
+                  onCheckedChange={(c) => toggleStatus(s, c === true)}
+                />
+                {STATUS_LABELS[s]}
+              </Label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {t.filterOverdue}
+          </Label>
+          <Select value={overdueToValue(params.overdue)} onValueChange={setOverdue}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t.filterAll}</SelectItem>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">{t.overdueAll}</SelectItem>
+              <SelectItem value="true">{t.overdueOnly}</SelectItem>
+              <SelectItem value="false">{t.overdueNot}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            {t.filterType}
+            {t.filterTitle}
           </Label>
-          <Select
-            value={filterType}
-            onValueChange={(v) => setFilterType(v as 'all' | ObligationType)}
-          >
-            <SelectTrigger className="w-auto min-w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t.filterAll}</SelectItem>
-              {TYPES.map((ty) => (
-                <SelectItem key={ty} value={ty}>
-                  {TYPE_LABELS[ty]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            type="search"
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            placeholder={t.filterTitlePlaceholder}
+            className="w-56"
+          />
         </div>
 
-        <Label className="flex cursor-pointer items-center gap-2 pb-2 text-sm font-normal">
-          <Checkbox
-            checked={overdueOnly}
-            onCheckedChange={(c) => setOverdueOnly(c === true)}
-          />
-          {t.filterOverdueOnly}
-        </Label>
+        {hasFilters ? (
+          <Button variant="ghost" size="sm" className="pb-2" onClick={clearFilters}>
+            {t.filterClear}
+          </Button>
+        ) : null}
 
         <span className="ml-auto pb-2 text-sm tabular-nums text-muted-foreground">
-          {rows.length} of {obligations.length} {t.resultsShown}
+          {total === 0
+            ? `0 ${t.dashboardTitle.toLowerCase()}`
+            : `${rangeStart}–${rangeEnd} of ${total}`}
         </span>
       </div>
 
-      <Card className="overflow-hidden p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead>{t.colTitle}</TableHead>
-              <TableHead>{t.colType}</TableHead>
-              <TableHead>{t.colStatus}</TableHead>
-              <TableHead>{t.colOwner}</TableHead>
-              <TableHead>{t.colDue}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((o) => {
-              const overdue = o.overdue;
-              return (
-                <TableRow
-                  key={o.id}
-                  onClick={() => router.push(`/obligations/${o.id}`)}
-                  className="cursor-pointer border-l-[3px]"
-                  style={{ borderLeftColor: overdue ? 'var(--destructive)' : 'transparent' }}
-                >
-                  <TableCell>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/obligations/${o.id}`}
-                          className="font-medium hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {o.title}
-                        </Link>
-                        {overdue ? (
-                          <Badge
-                            variant="outline"
-                            className="border-destructive text-[9px] uppercase tracking-wide text-destructive"
+      {total === 0 ? (
+        <Card className="flex flex-col items-center gap-2 border-dashed p-14 text-center">
+          <p className="text-lg font-medium">{t.noMatchTitle}</p>
+          <p className="max-w-sm text-sm text-muted-foreground">{t.noMatchBody}</p>
+          <Button variant="outline" className="mt-4 rounded-full" onClick={clearFilters}>
+            {t.filterClear}
+          </Button>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden p-0">
+          <Table className={`transition-opacity ${isPending ? 'opacity-60' : ''}`}>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>{t.colTitle}</TableHead>
+                <TableHead>{t.colType}</TableHead>
+                <TableHead>{t.colStatus}</TableHead>
+                <TableHead>{t.colOwner}</TableHead>
+                <TableHead>{t.colDue}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((o) => {
+                const overdue = o.overdue;
+                return (
+                  <TableRow
+                    key={o.id}
+                    onClick={() => router.push(`/obligations/${o.id}`)}
+                    className="cursor-pointer border-l-[3px]"
+                    style={{ borderLeftColor: overdue ? 'var(--destructive)' : 'transparent' }}
+                  >
+                    <TableCell>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/obligations/${o.id}`}
+                            className="font-medium hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {t.overdueTag}
-                          </Badge>
-                        ) : null}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-foreground/80">
-                    {TYPE_LABELS[o.type]}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusBadgeVariant(o.status)}>
-                      {STATUS_LABELS[o.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-foreground/80">{o.owner}</TableCell>
-                  <TableCell className="tabular-nums text-foreground/80">
-                    {formatDate(o.dueDate)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </Card>
+                            {o.title}
+                          </Link>
+                          {overdue ? (
+                            <Badge
+                              variant="outline"
+                              className="border-destructive text-[9px] uppercase tracking-wide text-destructive"
+                            >
+                              {t.overdueTag}
+                            </Badge>
+                          ) : null}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-foreground/80">
+                      {TYPE_LABELS[o.type]}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusBadgeVariant(o.status)}>
+                        {STATUS_LABELS[o.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-foreground/80">{o.owner}</TableCell>
+                    <TableCell className="tabular-nums text-foreground/80">
+                      {formatDate(o.dueDate)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {total > limit ? (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={goPrev} disabled={!canPrev || isPending}>
+            {t.paginationPrev}
+          </Button>
+          <Button variant="outline" size="sm" onClick={goNext} disabled={!canNext || isPending}>
+            {t.paginationNext}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

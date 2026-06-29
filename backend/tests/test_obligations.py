@@ -29,7 +29,9 @@ def test_create_and_list(client):
 
     resp = client.get("api/obligations")
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    body = resp.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
 
 
 def test_create_requires_owner(client):
@@ -165,7 +167,7 @@ def test_history_full_lifecycle_ordered(client):
 
 def test_history_absent_on_list(client):
     client.post("api/obligations", json=_payload())
-    rows = client.get("api/obligations").json()
+    rows = client.get("api/obligations").json()["items"]
     assert all("status_history" not in row for row in rows)
 
 
@@ -224,6 +226,87 @@ def test_stale_expected_version_writes_no_history(client):
     assert [(h["from_status"], h["to_status"]) for h in history] == [
         ("pending", "in_progress"),
     ]
+
+
+def test_list_pagination_limit_offset(client):
+    for i in range(5):
+        client.post("api/obligations", json=_payload(title=f"ob-{i}"))
+
+    page = client.get("api/obligations", params={"limit": 2, "offset": 2}).json()
+    assert page["total"] == 5
+    assert page["limit"] == 2
+    assert page["offset"] == 2
+    assert [o["title"] for o in page["items"]] == ["ob-2", "ob-3"]
+
+
+def test_list_filter_by_status(client):
+    a = client.post("api/obligations", json=_payload(title="a")).json()["id"]
+    client.post("api/obligations", json=_payload(title="b"))
+    client.patch(f"api/obligations/{a}/status", json={"status": "in_progress"})
+
+    page = client.get("api/obligations", params={"status": "in_progress"}).json()
+    assert page["total"] == 1
+    assert page["items"][0]["title"] == "a"
+
+
+def test_list_filter_by_status_multiple(client):
+    a = client.post("api/obligations", json=_payload(title="a")).json()["id"]
+    client.post("api/obligations", json=_payload(title="b"))  # pending
+    client.patch(f"api/obligations/{a}/status", json={"status": "in_progress"})
+
+    page = client.get(
+        "api/obligations", params={"status": ["pending", "in_progress"]}
+    ).json()
+    assert page["total"] == 2
+
+
+def test_list_filter_overdue(client):
+    client.post("api/obligations", json=_payload(title="late", due_date="2020-01-01"))
+    client.post("api/obligations", json=_payload(title="future", due_date="2999-01-01"))
+
+    overdue = client.get("api/obligations", params={"overdue": True}).json()
+    assert [o["title"] for o in overdue["items"]] == ["late"]
+
+    not_overdue = client.get("api/obligations", params={"overdue": False}).json()
+    assert [o["title"] for o in not_overdue["items"]] == ["future"]
+
+
+def test_list_filter_overdue_excludes_closed(client):
+    oid = client.post(
+        "api/obligations", json=_payload(title="late", due_date="2020-01-01")
+    ).json()["id"]
+    for state in ["in_progress", "submitted"]:
+        client.patch(f"api/obligations/{oid}/status", json={"status": state})
+
+    # submitted counts as closed -> not overdue despite past due date
+    overdue = client.get("api/obligations", params={"overdue": True}).json()
+    assert overdue["total"] == 0
+
+
+def test_list_filter_title_substring_case_insensitive(client):
+    client.post("api/obligations", json=_payload(title="Annual GDPR Review"))
+    client.post("api/obligations", json=_payload(title="Franchise tax"))
+
+    page = client.get("api/obligations", params={"title": "gdpr"}).json()
+    assert page["total"] == 1
+    assert page["items"][0]["title"] == "Annual GDPR Review"
+
+
+def test_list_filters_combine(client):
+    a = client.post(
+        "api/obligations", json=_payload(title="late report", due_date="2020-01-01")
+    ).json()["id"]
+    client.post(
+        "api/obligations", json=_payload(title="late other", due_date="2020-01-01")
+    )
+    client.patch(f"api/obligations/{a}/status", json={"status": "in_progress"})
+
+    page = client.get(
+        "api/obligations",
+        params={"overdue": True, "title": "report", "status": "in_progress"},
+    ).json()
+    assert page["total"] == 1
+    assert page["items"][0]["title"] == "late report"
 
 
 def test_kpis_empty(client):

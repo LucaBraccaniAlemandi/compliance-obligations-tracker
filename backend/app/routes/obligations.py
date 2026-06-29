@@ -1,7 +1,9 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Response
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, Query, Response
+from fastapi_pagination import LimitOffsetPage
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import and_, func, not_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -16,6 +18,19 @@ from app.services.obligation_status import (
 )
 
 router = APIRouter(prefix="/obligations", tags=["obligations"])
+
+
+def _overdue_conditions():
+    # An obligation is overdue when its due date has passed and it is not yet
+    # closed. submitted/done count as closed. Mirrors
+    # schemas.ObligationRead.overdue so API and KPIs stay consistent.
+    return [
+        models.Obligation.due_date.isnot(None),
+        models.Obligation.due_date < date.today(),
+        models.Obligation.status.notin_(
+            [ObligationStatus.submitted, ObligationStatus.done]
+        ),
+    ]
 
 
 def _get_or_404(db: Session, obligation_id: int) -> models.Obligation:
@@ -34,9 +49,33 @@ def create_obligation(payload: schemas.ObligationCreate, db: Session = Depends(g
     return obligation
 
 
-@router.get("", response_model=list[schemas.ObligationRead])
-def list_obligations(db: Session = Depends(get_db)):
-    return db.query(models.Obligation).all()
+@router.get("", response_model=LimitOffsetPage[schemas.ObligationRead])
+def list_obligations(
+    db: Session = Depends(get_db),
+    status: list[ObligationStatus] | None = Query(
+        default=None, description="Filter by one or more statuses (repeatable)."
+    ),
+    overdue: bool | None = Query(
+        default=None, description="Filter to overdue (true) or not-overdue (false)."
+    ),
+    title: str | None = Query(
+        default=None, description="Case-insensitive substring match on title."
+    ),
+):
+    stmt = select(models.Obligation)
+
+    if status:
+        stmt = stmt.where(models.Obligation.status.in_(status))
+
+    if overdue is not None:
+        cond = and_(*_overdue_conditions())
+        stmt = stmt.where(cond if overdue else not_(cond))
+
+    if title:
+        stmt = stmt.where(models.Obligation.title.ilike(f"%{title}%"))
+
+    stmt = stmt.order_by(models.Obligation.id)
+    return paginate(db, stmt)
 
 
 @router.get("/kpis", response_model=schemas.ObligationKpis)
@@ -51,18 +90,8 @@ def obligation_kpis(db: Session = Depends(get_db)):
     for status, count in rows:
         by_status[status] = count
 
-    # Overdue rule mirrors schemas.ObligationRead.overdue: past due date and
-    # not yet closed (submitted/done are considered closed).
     overdue = (
-        db.query(func.count())
-        .filter(
-            models.Obligation.due_date.isnot(None),
-            models.Obligation.due_date < date.today(),
-            models.Obligation.status.notin_(
-                [ObligationStatus.submitted, ObligationStatus.done]
-            ),
-        )
-        .scalar()
+        db.query(func.count()).filter(*_overdue_conditions()).scalar()
     )
 
     return schemas.ObligationKpis(

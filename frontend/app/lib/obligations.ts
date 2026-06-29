@@ -7,7 +7,11 @@ import type {
   ObligationDto,
   ObligationKpis,
   ObligationKpisDto,
+  ObligationListParams,
+  ObligationPage,
+  ObligationPageDto,
 } from './types';
+import { encodeObligationParams } from './obligation-search-params';
 
 /**
  * Read functions for obligations.
@@ -41,10 +45,25 @@ function fromDto(d: ObligationDto): Obligation {
   };
 }
 
-export const getObligations = cache(async (): Promise<Obligation[]> => {
-  const dtos = await apiGet<ObligationDto[]>('/api/obligations');
-  return dtos.map(fromDto);
-});
+/**
+ * Read a page of obligations. The backend returns a paginated envelope
+ * `{ items, total, limit, offset }` and applies the `status`/`overdue`/`title`
+ * filters server-side; `total` reflects all matching rows ignoring the page.
+ */
+export const getObligations = cache(
+  async (params: ObligationListParams = {}): Promise<ObligationPage> => {
+    const qs = encodeObligationParams(params).toString();
+    const dto = await apiGet<ObligationPageDto>(
+      `/api/obligations${qs ? `?${qs}` : ''}`,
+    );
+    return {
+      items: dto.items.map(fromDto),
+      total: dto.total,
+      limit: dto.limit,
+      offset: dto.offset,
+    };
+  },
+);
 
 export const getObligationKpis = cache(async (): Promise<ObligationKpis> => {
   const dto = await apiGet<ObligationKpisDto>('/api/obligations/kpis');
