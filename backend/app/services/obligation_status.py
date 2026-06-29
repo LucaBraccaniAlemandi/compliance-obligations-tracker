@@ -15,6 +15,14 @@ class DocumentRequired(AppError):
     status_code = 409
 
 
+class ConcurrentModification(AppError):
+    code = "CONCURRENT_MODIFICATION"
+    status_code = 409
+
+    def __init__(self, expected: int, current: int):
+        super().__init__({"expected": expected, "current": current})
+
+
 class ObligationStatusService:
     # Allowed forward transitions of the obligation lifecycle.
     ALLOWED_TRANSITIONS: dict[ObligationStatus, set[ObligationStatus]] = {

@@ -32,6 +32,9 @@ class ObligationUpdate(BaseModel):
 
 class ObligationStatusUpdate(BaseModel):
     status: ObligationStatus
+    # Optional optimistic-lock precondition. When set, the row's current
+    # version must match or the change is rejected with 409.
+    expected_version: int | None = None
 
 
 class ObligationStatusHistoryRead(BaseModel):
@@ -47,6 +50,7 @@ class ObligationRead(ObligationBase):
 
     id: int
     status: ObligationStatus
+    version: int  # optimistic-lock counter; echo back as expected_version
     created_at: datetime
     company_tax_id: str  # SENSITIVE — masked on read
 
