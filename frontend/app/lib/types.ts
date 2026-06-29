@@ -36,6 +36,8 @@ export interface Obligation {
   companyTaxId: string;
   /** Derived and supplied by the backend — not recomputed client-side. */
   overdue: boolean;
+  /** Optimistic-lock version; echoed back as `expected_version` on status PATCH. */
+  version: number;
   status_history: StatusChange[];
 }
 
@@ -59,6 +61,8 @@ export interface ObligationDto {
   company_tax_id: string;
   created_at: string;
   overdue: boolean;
+  /** Optimistic-lock version, bumped on every mutation. */
+  version: number;
   status_history: StatusChange[];
 }
 

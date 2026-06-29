@@ -29,6 +29,8 @@ function fromDto(d: ObligationDto): Obligation {
     companyTaxId: d.company_tax_id,
     // Derived server-side; the UI does not recompute it.
     overdue: d.overdue,
+    // Optimistic-lock version; sent back as expected_version on status changes.
+    version: d.version,
     // Backend does not track a status-change history yet.
     status_history: d.status_history ?? [],
   };
