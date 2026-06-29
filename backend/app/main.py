@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_pagination import add_pagination
 
 from app.core.config import settings
 from app.core.errors import register_error_handlers
@@ -24,3 +25,6 @@ def health():
 register_error_handlers(app)
 
 app.include_router(api_router)
+
+# Wires limit/offset query params into routes returning a Page response.
+add_pagination(app)
