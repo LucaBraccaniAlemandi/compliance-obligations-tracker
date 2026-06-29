@@ -1,0 +1,23 @@
+import Link from 'next/link';
+import { createObligation } from '@/app/lib/actions';
+import { t } from '@/app/lib/strings';
+import { ObligationForm } from '../components/obligation-form';
+
+export default function NewObligationPage() {
+  return (
+    <main className="mx-auto w-full max-w-xl px-6 py-9 pb-20">
+      <Link
+        href="/obligations"
+        className="mb-4 inline-block text-sm text-primary hover:underline"
+      >
+        ← {t.back}
+      </Link>
+      <h1 className="mb-5 text-2xl font-light tracking-tight">{t.createTitle}</h1>
+      <ObligationForm
+        action={createObligation}
+        redirectTo="/obligations"
+        successMessage={t.toastCreated}
+      />
+    </main>
+  );
+}
