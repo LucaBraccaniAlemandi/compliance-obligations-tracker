@@ -107,6 +107,8 @@ export const t = {
   toastUpdated: 'Obligation updated.',
   toastSaveError: "Couldn't save. Please review the errors below.",
   toastStatusUpdated: 'Status updated.',
+  toastConcurrentModification:
+    'This obligation was changed by someone else. Showing the latest version — review and retry.',
   toastDocAttached: 'Document attached.',
   toastActionFailed: 'Action failed.',
 } as const;

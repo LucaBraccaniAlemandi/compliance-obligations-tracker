@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { apiPost, apiPatch, apiDelete, ApiError } from './api';
+import { getObligation } from './obligations';
+import { t } from './strings';
 import {
   obligationFormSchema,
   readObligationForm,
@@ -96,17 +98,55 @@ export async function updateObligation(
   }
 }
 
+/**
+ * Result of a status transition. Carries the fresh `status`/`version` on success
+ * (so the next change can send an up-to-date `expected_version`) and also on a
+ * `CONCURRENT_MODIFICATION` conflict (so the UI can show the latest state before
+ * the user retries — we never auto-retry).
+ */
+export type TransitionResult =
+  | { ok: true; status: ObligationStatus; version: number }
+  | {
+      ok: false;
+      code: 'CONCURRENT_MODIFICATION';
+      error: string;
+      status: ObligationStatus;
+      version: number;
+    }
+  | { ok: false; error: string };
+
 export async function transitionObligation(
   id: string,
   to: ObligationStatus,
-): Promise<ActionResult> {
+  expectedVersion: number,
+): Promise<TransitionResult> {
   try {
     // Dedicated transition route enforces the backend state machine.
-    await apiPatch<ObligationDto>(`/api/obligations/${id}/status`, { status: to });
+    // expected_version lets the backend reject changes made against stale reads.
+    const dto = await apiPatch<ObligationDto>(`/api/obligations/${id}/status`, {
+      status: to,
+      expected_version: expectedVersion,
+    });
     revalidatePath('/obligations');
     revalidatePath(`/obligations/${id}`);
-    return { ok: true };
+    return { ok: true, status: dto.status, version: dto.version };
   } catch (err) {
+    // A version conflict: refetch so the UI can show who-won state, then let the
+    // user decide whether to retry against the fresh version.
+    if (err instanceof ApiError && err.status === 409) {
+      const envelope = err.body as ErrorEnvelope;
+      if (envelope?.error?.code === 'CONCURRENT_MODIFICATION') {
+        const fresh = await getObligation(id);
+        revalidatePath(`/obligations/${id}`);
+        return {
+          ok: false,
+          code: 'CONCURRENT_MODIFICATION',
+          error: messageForCode('CONCURRENT_MODIFICATION', envelope.error?.params ?? {}),
+          status: fresh.status,
+          version: fresh.version,
+        };
+      }
+    }
     return { ok: false, error: toMessage(err) };
   }
 }
@@ -165,6 +205,8 @@ function messageForCode(code: string, params: Record<string, unknown>): string {
       return `Can't move this obligation from ${statusText(params.current)} to ${statusText(params.target)}.`;
     case 'DOCUMENT_REQUIRED':
       return 'A required document must be attached before this obligation can be submitted.';
+    case 'CONCURRENT_MODIFICATION':
+      return t.toastConcurrentModification;
     case 'HTTP_ERROR':
       return `The server rejected this request (${params.status ?? 'error'}).`;
     case 'INTERNAL_ERROR':

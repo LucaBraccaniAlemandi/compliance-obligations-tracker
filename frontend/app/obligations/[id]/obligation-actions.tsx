@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,17 +13,33 @@ export function ObligationActions({ obligation }: { obligation: Obligation }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const transitions = allowedTransitions(obligation.status);
+  // status + version are owned locally so a retry after a conflict uses the
+  // freshest version immediately. router.refresh() keeps the server-rendered
+  // header badge and history list in sync; this state drives the buttons.
+  const [status, setStatus] = useState<ObligationStatus>(obligation.status);
+  const [version, setVersion] = useState<number>(obligation.version);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+  const transitions = allowedTransitions(status);
+
+  function run(to: ObligationStatus) {
     startTransition(async () => {
-      const res = await fn();
-      if (!res.ok) {
-        toast.error(res.error ?? t.toastActionFailed);
-      } else {
+      const res = await transitionObligation(obligation.id, to, version);
+      if (res.ok) {
+        setStatus(res.status);
+        setVersion(res.version);
         toast.success(t.toastStatusUpdated);
         router.refresh();
+        return;
       }
+      if ('code' in res && res.code === 'CONCURRENT_MODIFICATION') {
+        // re-apply their change automatically.
+        setStatus(res.status);
+        setVersion(res.version);
+        toast.warning(res.error);
+        router.refresh();
+        return;
+      }
+      toast.error(res.error ?? t.toastActionFailed);
     });
   }
 
@@ -47,7 +63,7 @@ export function ObligationActions({ obligation }: { obligation: Obligation }) {
             variant={primary ? 'default' : 'outline'}
             className="w-full rounded-full"
             disabled={pending}
-            onClick={() => run(() => transitionObligation(obligation.id, to))}
+            onClick={() => run(to)}
           >
             {TRANSITION_LABELS[to]}
           </Button>
