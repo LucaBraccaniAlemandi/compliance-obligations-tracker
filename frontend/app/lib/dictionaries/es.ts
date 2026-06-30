@@ -19,10 +19,18 @@ export const es: Dictionary = {
     registered_agent_renewal: 'Renovación de agente registrado',
   },
   TRANSITION_LABELS: {
-    pending: 'Reabrir',
-    in_progress: 'Iniciar',
-    submitted: 'Enviar',
-    done: 'Marcar como completada',
+    pending: {
+      in_progress: 'Iniciar',
+    },
+    in_progress: {
+      submitted: 'Enviar',
+      pending: 'Volver a pendiente',
+    },
+    submitted: {
+      done: 'Marcar como completada',
+      in_progress: 'Volver a en curso',
+    },
+    done: {},
   },
   t: {
     appName: 'Gestor de Obligaciones',

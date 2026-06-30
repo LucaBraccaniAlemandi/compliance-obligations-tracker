@@ -20,12 +20,24 @@ const TYPE_LABELS: Record<ObligationType, string> = {
   registered_agent_renewal: 'Registered agent renewal',
 };
 
-/** Label shown on the transition button that moves an obligation *to* a status. */
-const TRANSITION_LABELS: Record<ObligationStatus, string> = {
-  pending: 'Reopen',
-  in_progress: 'Start progress',
-  submitted: 'Submit',
-  done: 'Mark as done',
+/**
+ * Label for the button that moves an obligation from one status *to* another.
+ * Keyed by `[from][to]` so a forward move and a rollback to the same target can
+ * read differently (e.g. submitted→in_progress is a rollback, not "Start").
+ */
+const TRANSITION_LABELS: Record<ObligationStatus, Partial<Record<ObligationStatus, string>>> = {
+  pending: {
+    in_progress: 'Start progress',
+  },
+  in_progress: {
+    submitted: 'Submit',
+    pending: 'Move back to pending',
+  },
+  submitted: {
+    done: 'Mark as done',
+    in_progress: 'Send back to in progress',
+  },
+  done: {},
 };
 
 const t = {

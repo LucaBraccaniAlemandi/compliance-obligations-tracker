@@ -67,7 +67,7 @@ export function ObligationActions({ obligation }: { obligation: Obligation }) {
             disabled={pending}
             onClick={() => run(to)}
           >
-            {TRANSITION_LABELS[to]}
+            {TRANSITION_LABELS[status][to]}
           </Button>
         );
       })}
