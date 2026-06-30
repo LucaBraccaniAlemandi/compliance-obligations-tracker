@@ -398,3 +398,39 @@ def test_version_id_col_blocks_concurrent_commit():
 
     s1.close()
     s2.close()
+
+
+def _create(client, **over):
+    return client.post("api/obligations", json=_payload(**over)).json()["id"]
+
+
+def test_list_sorts_due_date_asc_by_default(client):
+    _create(client, title="late", due_date="2026-12-01")
+    _create(client, title="early", due_date="2026-01-01")
+    _create(client, title="mid", due_date="2026-06-01")
+
+    items = client.get("api/obligations").json()["items"]
+    assert [i["title"] for i in items] == ["early", "mid", "late"]
+
+
+def test_list_sorts_due_date_desc(client):
+    _create(client, title="late", due_date="2026-12-01")
+    _create(client, title="early", due_date="2026-01-01")
+    _create(client, title="mid", due_date="2026-06-01")
+
+    items = client.get("api/obligations?sort_due_date=desc").json()["items"]
+    assert [i["title"] for i in items] == ["late", "mid", "early"]
+
+
+def test_list_sorts_nulls_last(client):
+    _create(client, title="nodate", due_date=None)
+    _create(client, title="dated", due_date="2026-01-01")
+
+    for order in ("asc", "desc"):
+        items = client.get(f"api/obligations?sort_due_date={order}").json()["items"]
+        assert items[-1]["title"] == "nodate"
+
+
+def test_list_rejects_bad_sort(client):
+    resp = client.get("api/obligations?sort_due_date=sideways")
+    assert resp.status_code == 422

@@ -1,4 +1,4 @@
-from app.models.enums import ObligationStatus, ObligationType
+from app.models.enums import ObligationStatus, ObligationType, SortOrder
 from app.models.obligation import Obligation, ObligationStatusHistory
 
 __all__ = [
@@ -6,4 +6,5 @@ __all__ = [
     "ObligationStatus",
     "ObligationStatusHistory",
     "ObligationType",
+    "SortOrder",
 ]

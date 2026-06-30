@@ -29,6 +29,7 @@ import type {
   ObligationListParams,
   ObligationPage,
   ObligationStatus,
+  SortDueDate,
 } from '@/app/lib/types';
 import { encodeObligationParams } from '@/app/lib/obligation-search-params';
 import { statusBadgeVariant } from '@/app/lib/obligations-domain';
@@ -111,8 +112,22 @@ export function DashboardTable({
     });
   }
 
+  // Current direction, defaulting to the backend default (`asc`).
+  const sortDir: SortDueDate = params.sortDueDate ?? 'asc';
+
+  function toggleSortDueDate() {
+    const next: SortDueDate = sortDir === 'asc' ? 'desc' : 'asc';
+    navigate({
+      ...params,
+      // `asc` is the default — drop it so the URL stays clean.
+      sortDueDate: next === 'asc' ? undefined : next,
+      offset: 0,
+    });
+  }
+
   function clearFilters() {
-    navigate({ limit, offset: 0 });
+    // Sort is not a filter; preserve the chosen direction when clearing.
+    navigate({ limit, offset: 0, sortDueDate: params.sortDueDate });
   }
 
   // Title search: local state for responsive typing, debounced into the URL.
@@ -269,7 +284,21 @@ export function DashboardTable({
                 <TableHead>{t.colType}</TableHead>
                 <TableHead>{t.colStatus}</TableHead>
                 <TableHead>{t.colOwner}</TableHead>
-                <TableHead>{t.colDue}</TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={toggleSortDueDate}
+                    disabled={isPending}
+                    aria-label={sortDir === 'asc' ? t.sortDesc : t.sortAsc}
+                    title={sortDir === 'asc' ? t.sortDesc : t.sortAsc}
+                    className="-mx-1 flex items-center gap-1 rounded px-1 hover:text-foreground"
+                  >
+                    {t.colDue}
+                    <span aria-hidden="true" className="text-[10px] leading-none">
+                      {sortDir === 'asc' ? '▲' : '▼'}
+                    </span>
+                  </button>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

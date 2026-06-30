@@ -99,7 +99,15 @@ export interface ObligationListParams {
   overdue?: boolean;
   /** Case-insensitive substring match on title. */
   title?: string;
+  /**
+   * Due-date sort direction. Backend default is `asc`; we omit it when `asc`
+   * (or undefined) so default URLs stay clean and only carry `desc`.
+   */
+  sortDueDate?: SortDueDate;
 }
+
+/** Due-date sort direction sent as `sort_due_date`. */
+export type SortDueDate = 'asc' | 'desc';
 
 /**
  * Wire shape for GET /api/obligations/kpis (snake_case).

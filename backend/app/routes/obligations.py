@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, not_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
-from app.models import ObligationStatus
+from app.models import ObligationStatus, SortOrder
 
 from app import models, schemas
 from app.core.database import get_db
@@ -58,6 +58,10 @@ def list_obligations(
     title: str | None = Query(
         default=None, description="Case-insensitive substring match on title."
     ),
+    sort_due_date: SortOrder = Query(
+        default=SortOrder.asc,
+        description="Sort by due date: asc (default) or desc. Nulls last.",
+    ),
 ):
     stmt = select(models.Obligation)
 
@@ -71,7 +75,9 @@ def list_obligations(
     if title:
         stmt = stmt.where(models.Obligation.title.ilike(f"%{title}%"))
 
-    stmt = stmt.order_by(models.Obligation.id)
+    due_date = models.Obligation.due_date
+    order = due_date.desc() if sort_due_date is SortOrder.desc else due_date.asc()
+    stmt = stmt.order_by(order.nulls_last(), models.Obligation.id)
     return paginate(db, stmt)
 
 

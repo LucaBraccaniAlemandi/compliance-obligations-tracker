@@ -13,3 +13,8 @@ class ObligationStatus(str, enum.Enum):
     in_progress = "in_progress"
     submitted = "submitted"
     done = "done"
+
+
+class SortOrder(str, enum.Enum):
+    asc = "asc"
+    desc = "desc"

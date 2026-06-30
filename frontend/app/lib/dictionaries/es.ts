@@ -33,6 +33,9 @@ export const es: Dictionary = {
     cancel: 'Cancelar',
     back: 'Volver a la lista',
     edit: 'Editar',
+    delete: 'Eliminar',
+    deleting: 'Eliminando…',
+    deleteConfirm: '¿Eliminar esta obligación? Esta acción no se puede deshacer.',
     save: 'Guardar',
     saving: 'Guardando…',
     language: 'Idioma',
@@ -52,6 +55,8 @@ export const es: Dictionary = {
     filterTitle: 'Título',
     filterTitlePlaceholder: 'Buscar título…',
     filterClear: 'Limpiar filtros',
+    sortAsc: 'Ordenar por vencimiento más próximo',
+    sortDesc: 'Ordenar por vencimiento más lejano',
     overdueAll: 'Todas',
     overdueOnly: 'Vencidas',
     overdueNot: 'No vencidas',
@@ -116,6 +121,7 @@ export const es: Dictionary = {
       'Otra persona modificó esta obligación. Mostrando la última versión — revisa y reintenta.',
     toastDocAttached: 'Documento adjuntado.',
     toastActionFailed: 'La acción falló.',
+    toastDeleted: 'Obligación eliminada.',
 
     // Form validation messages (shared by client + server validation).
     vTitleRequired: 'El título es obligatorio.',
