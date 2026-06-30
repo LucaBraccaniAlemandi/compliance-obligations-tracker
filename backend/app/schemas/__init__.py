@@ -1,12 +1,14 @@
-from app.schemas.obligation import (
-    ObligationBase,
+from app.schemas.base import ObligationBase
+from app.schemas.requests import (
     ObligationCreate,
+    ObligationStatusUpdate,
+    ObligationUpdate,
+)
+from app.schemas.responses import (
     ObligationDetailRead,
     ObligationKpis,
     ObligationRead,
     ObligationStatusHistoryRead,
-    ObligationStatusUpdate,
-    ObligationUpdate,
 )
 
 __all__ = [

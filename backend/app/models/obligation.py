@@ -1,5 +1,3 @@
-import enum
-
 from sqlalchemy import (
     Boolean,
     Column,
@@ -11,24 +9,11 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-
-
-class ObligationType(str, enum.Enum):
-    annual_report = "annual_report"
-    franchise_tax = "franchise_tax"
-    boi_report = "boi_report"
-    registered_agent_renewal = "registered_agent_renewal"
-
-
-class ObligationStatus(str, enum.Enum):
-    pending = "pending"
-    in_progress = "in_progress"
-    submitted = "submitted"
-    done = "done"
+from app.models.enums import ObligationStatus, ObligationType
 
 
 class Obligation(Base):
@@ -54,7 +39,7 @@ class Obligation(Base):
 
     __mapper_args__ = {"version_id_col": version}
 
-    status_history = relationship(
+    status_history: Mapped[list["ObligationStatusHistory"]] = relationship(
         "ObligationStatusHistory",
         back_populates="obligation",
         order_by="ObligationStatusHistory.changed_at",

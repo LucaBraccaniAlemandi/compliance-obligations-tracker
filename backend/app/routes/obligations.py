@@ -11,11 +11,8 @@ from app.models import ObligationStatus
 
 from app import models, schemas
 from app.core.database import get_db
-from app.core.errors import NotFoundError
-from app.services.obligation_status import (
-    ConcurrentModification,
-    ObligationStatusService,
-)
+from app.core.exceptions import ConcurrentModification, NotFoundError
+from app.services.obligation_status import ObligationStatusService
 
 router = APIRouter(prefix="/obligations", tags=["obligations"])
 
