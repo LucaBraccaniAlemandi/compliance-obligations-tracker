@@ -114,7 +114,7 @@ const t = {
   fRequiresDoc: 'Requires a document',
   fTaxId: 'Company tax ID',
   requiredMark: 'required',
-  taxidHelp: 'Stored securely and shown masked after saving.',
+  taxidHelp: '9-digit EIN (XX-XXXXXXX); hyphen optional. Stored securely and shown masked after saving.',
   taxidLocked: "Tax ID can't be changed after creation.",
   serverErrorBanner: "Couldn't save. Please review the errors below.",
   toastCreated: 'Obligation created.',
@@ -133,7 +133,7 @@ const t = {
   vDueInvalid: 'Enter a valid date.',
   vOwnerRequired: 'Owner is required.',
   vTaxIdRequired: 'Tax ID is required.',
-  vTaxIdFormat: 'Use the format 12-3456789.',
+  vTaxIdFormat: 'Enter 9 digits, e.g. 12-3456789 (the hyphen is optional).',
   validationFailed: 'Validation failed.',
 
   // Backend error-code messages. `{from}`/`{to}`/`{status}` are interpolated.

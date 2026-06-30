@@ -110,7 +110,7 @@ export const es: Dictionary = {
     fRequiresDoc: 'Requiere un documento',
     fTaxId: 'NIF de la empresa',
     requiredMark: 'requerido',
-    taxidHelp: 'Se almacena de forma segura y se muestra enmascarado tras guardar.',
+    taxidHelp: 'EIN de 9 dígitos (XX-XXXXXXX); el guion es opcional. Se almacena de forma segura y se muestra enmascarado tras guardar.',
     taxidLocked: 'El NIF no se puede cambiar tras la creación.',
     serverErrorBanner: 'No se pudo guardar. Revisa los errores a continuación.',
     toastCreated: 'Obligación creada.',
@@ -129,7 +129,7 @@ export const es: Dictionary = {
     vDueInvalid: 'Introduce una fecha válida.',
     vOwnerRequired: 'El responsable es obligatorio.',
     vTaxIdRequired: 'El identificador fiscal es obligatorio.',
-    vTaxIdFormat: 'Usa el formato 12-3456789.',
+    vTaxIdFormat: 'Introduce 9 dígitos, p. ej. 12-3456789 (el guion es opcional).',
     validationFailed: 'La validación falló.',
 
     // Backend error-code messages. `{from}`/`{to}`/`{status}` are interpolated.
