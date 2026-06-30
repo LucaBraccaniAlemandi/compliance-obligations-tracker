@@ -35,8 +35,9 @@ import type {
 function validateForm(
   formData: FormData,
   dict: Dictionary,
+  taxIdRequired: boolean,
 ): { ok: true; data: ObligationFormValues } | { ok: false; fieldErrors: FieldErrors } {
-  const schema = buildObligationFormSchema(validationMessages(dict.t));
+  const schema = buildObligationFormSchema(validationMessages(dict.t), { taxIdRequired });
   const parsed = schema.safeParse(readObligationForm(formData));
   if (parsed.success) {
     return { ok: true, data: parsed.data };
@@ -66,7 +67,7 @@ export async function createObligation(
   formData: FormData,
 ): Promise<ActionResult> {
   const dict = await getRequestDictionary();
-  const result = validateForm(formData, dict);
+  const result = validateForm(formData, dict, true);
   if (!result.ok) {
     return { ok: false, error: dict.t.validationFailed, fieldErrors: result.fieldErrors };
   }
@@ -90,7 +91,8 @@ export async function updateObligation(
   formData: FormData,
 ): Promise<ActionResult> {
   const dict = await getRequestDictionary();
-  const result = validateForm(formData, dict);
+  // Edit forms omit the tax id (read-only); don't require it on update.
+  const result = validateForm(formData, dict, false);
   if (!result.ok) {
     return { ok: false, error: dict.t.validationFailed, fieldErrors: result.fieldErrors };
   }

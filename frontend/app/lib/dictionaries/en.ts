@@ -126,6 +126,7 @@ const t = {
   vDueRequired: 'Due date is required.',
   vDueInvalid: 'Enter a valid date.',
   vOwnerRequired: 'Owner is required.',
+  vTaxIdRequired: 'Tax ID is required.',
   vTaxIdFormat: 'Use the format 12-3456789.',
   validationFailed: 'Validation failed.',
 
