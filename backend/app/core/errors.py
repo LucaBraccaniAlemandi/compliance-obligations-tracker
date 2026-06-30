@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from fastapi import Request
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -27,12 +28,7 @@ class AppError(Exception):
         return {"error": {"code": self.code, "params": self.params}}
 
 
-class NotFoundError(AppError):
-    code = "NOT_FOUND"
-    status_code = 404
-
-
-def register_error_handlers(app) -> None:
+def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _handle_app_error(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
