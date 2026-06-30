@@ -37,6 +37,9 @@ const t = {
   cancel: 'Cancel',
   back: 'Back to list',
   edit: 'Edit',
+  delete: 'Delete',
+  deleting: 'Deleting…',
+  deleteConfirm: 'Delete this obligation? This cannot be undone.',
   save: 'Save',
   saving: 'Saving…',
   language: 'Language',
@@ -56,6 +59,8 @@ const t = {
   filterTitle: 'Title',
   filterTitlePlaceholder: 'Search title…',
   filterClear: 'Clear filters',
+  sortAsc: 'Sort by earliest due date',
+  sortDesc: 'Sort by latest due date',
   overdueAll: 'All',
   overdueOnly: 'Overdue',
   overdueNot: 'Not overdue',
@@ -120,6 +125,7 @@ const t = {
     'This obligation was changed by someone else. Showing the latest version — review and retry.',
   toastDocAttached: 'Document attached.',
   toastActionFailed: 'Action failed.',
+  toastDeleted: 'Obligation deleted.',
 
   // Form validation messages (shared by client + server validation).
   vTitleRequired: 'Title is required.',

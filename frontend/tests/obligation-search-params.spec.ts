@@ -78,6 +78,30 @@ test('parse and encode round-trip', () => {
   expect(reparsed.title).toBe('tax');
 });
 
+test('parse reads sort_due_date, defaulting to asc (omitted)', () => {
+  // Default: absent param => no sortDueDate (asc is the backend default).
+  expect(parseObligationSearchParams({}).sortDueDate).toBeUndefined();
+  expect(parseObligationSearchParams({ sort_due_date: 'asc' }).sortDueDate).toBeUndefined();
+  // Only the non-default direction is carried.
+  expect(parseObligationSearchParams({ sort_due_date: 'desc' }).sortDueDate).toBe('desc');
+  // Invalid values are dropped (frontend never sends bad input).
+  expect(parseObligationSearchParams({ sort_due_date: 'sideways' }).sortDueDate).toBeUndefined();
+});
+
+test('encode emits sort_due_date only for desc', () => {
+  // Changed to desc => param present.
+  expect(
+    encodeObligationParams({ sortDueDate: 'desc', limit: 10, offset: 0 }).toString(),
+  ).toBe('sort_due_date=desc&limit=10&offset=0');
+  // Default asc / undefined => omitted for clean URLs.
+  expect(
+    encodeObligationParams({ sortDueDate: 'asc', limit: 10, offset: 0 }).toString(),
+  ).toBe('limit=10&offset=0');
+  expect(encodeObligationParams({ limit: 10, offset: 0 }).toString()).toBe(
+    'limit=10&offset=0',
+  );
+});
+
 test('hasActiveFilters ignores pagination', () => {
   expect(hasActiveFilters({ limit: 20, offset: 40 })).toBe(false);
   expect(hasActiveFilters({ status: ['pending'] })).toBe(true);
