@@ -6,7 +6,11 @@ import { Card } from '@/components/ui/card';
 import { statusBadgeVariant } from '@/app/lib/obligations-domain';
 import { getDictionary } from '@/app/lib/dictionaries/get';
 import { intlLocale, type Locale } from '@/app/lib/dictionaries/config';
-import { ObligationActions, AttachDocumentButton } from './obligation-actions';
+import {
+  ObligationActions,
+  AttachDocumentButton,
+  DeleteObligationButton,
+} from './obligation-actions';
 import type { ObligationStatus } from '@/app/lib/types';
 
 export default async function ObligationDetailPage({
@@ -71,9 +75,6 @@ export default async function ObligationDetailPage({
             {obligation.id}
           </span>
         </div>
-        <Button asChild variant="outline" className="rounded-full">
-          <Link href={`/${lang}/obligations/${obligation.id}/edit`}>{t.edit}</Link>
-        </Button>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
@@ -181,6 +182,12 @@ export default async function ObligationDetailPage({
               {t.actionsNote}
             </p>
             <ObligationActions obligation={obligation} />
+            <div className="mt-3.5 flex flex-col gap-3.5 border-t pt-3.5">
+              <Button asChild variant="outline" className="w-full rounded-full">
+                <Link href={`/${lang}/obligations/${obligation.id}/edit`}>{t.edit}</Link>
+              </Button>
+              <DeleteObligationButton id={obligation.id} lang={lang} />
+            </div>
           </Card>
         </div>
       </div>

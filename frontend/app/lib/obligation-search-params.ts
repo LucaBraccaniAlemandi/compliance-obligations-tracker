@@ -1,4 +1,4 @@
-import type { ObligationListParams, ObligationStatus } from './types';
+import type { ObligationListParams, ObligationStatus, SortDueDate } from './types';
 
 /**
  * Shared parsing/encoding for the obligations list URL state.
@@ -63,10 +63,17 @@ export function parseObligationSearchParams(
   const offsetRaw = parseInt0(raw.offset);
   const offset = offsetRaw === undefined ? 0 : Math.max(offsetRaw, 0);
 
+  // Default (`asc`) and any invalid value are dropped; only `desc` is carried.
+  const sortRaw = Array.isArray(raw.sort_due_date)
+    ? raw.sort_due_date[0]
+    : raw.sort_due_date;
+  const sortDueDate: SortDueDate | undefined = sortRaw === 'desc' ? 'desc' : undefined;
+
   return {
     ...(status.length > 0 ? { status } : {}),
     ...(overdue !== undefined ? { overdue } : {}),
     ...(title !== undefined ? { title } : {}),
+    ...(sortDueDate !== undefined ? { sortDueDate } : {}),
     limit,
     offset,
   };
@@ -84,6 +91,8 @@ export function encodeObligationParams(
   for (const s of params.status ?? []) sp.append('status', s);
   if (params.overdue !== undefined) sp.set('overdue', String(params.overdue));
   if (params.title) sp.set('title', params.title);
+  // Backend default is `asc`; only emit the non-default `desc`.
+  if (params.sortDueDate === 'desc') sp.set('sort_due_date', 'desc');
   if (params.limit !== undefined) sp.set('limit', String(params.limit));
   if (params.offset !== undefined) sp.set('offset', String(params.offset));
   return sp;

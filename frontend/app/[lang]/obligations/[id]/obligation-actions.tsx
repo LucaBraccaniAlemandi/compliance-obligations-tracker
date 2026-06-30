@@ -4,9 +4,10 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { transitionObligation, attachDocument } from '@/app/lib/actions';
+import { transitionObligation, attachDocument, deleteObligation } from '@/app/lib/actions';
 import { allowedTransitions } from '@/app/lib/obligations-domain';
 import { useDictionary } from '@/app/lib/dictionaries/provider';
+import type { Locale } from '@/app/lib/dictionaries/config';
 import type { Obligation, ObligationStatus } from '@/app/lib/types';
 
 export function ObligationActions({ obligation }: { obligation: Obligation }) {
@@ -99,6 +100,40 @@ export function AttachDocumentButton({ id }: { id: string }) {
       }
     >
       {t.attach}
+    </Button>
+  );
+}
+
+export function DeleteObligationButton({ id, lang }: { id: string; lang: Locale }) {
+  const { t } = useDictionary();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="w-full rounded-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+      disabled={pending}
+      onClick={() => {
+        // Hard delete; no undo. Confirm before hitting the backend.
+        if (!window.confirm(t.deleteConfirm)) return;
+        startTransition(async () => {
+          const fd = new FormData();
+          fd.set('id', id);
+          const res = await deleteObligation(fd);
+          if (res.ok) {
+            toast.success(t.toastDeleted);
+            // The detail page is gone now; return to the list.
+            router.push(`/${lang}/obligations`);
+            router.refresh();
+          } else {
+            toast.error(res.error ?? t.toastActionFailed);
+          }
+        });
+      }}
+    >
+      {pending ? t.deleting : t.delete}
     </Button>
   );
 }
