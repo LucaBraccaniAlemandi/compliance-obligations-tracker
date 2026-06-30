@@ -25,7 +25,7 @@ export const es: Dictionary = {
     done: 'Marcar como completada',
   },
   t: {
-    appName: 'Gestor de Cumplimiento',
+    appName: 'Gestor de Obligaciones',
     dashboardTitle: 'Obligaciones',
     create: 'Crear obligación',
     loading: 'Cargando…',
@@ -122,6 +122,7 @@ export const es: Dictionary = {
     vDueRequired: 'La fecha límite es obligatoria.',
     vDueInvalid: 'Introduce una fecha válida.',
     vOwnerRequired: 'El responsable es obligatorio.',
+    vTaxIdRequired: 'El identificador fiscal es obligatorio.',
     vTaxIdFormat: 'Usa el formato 12-3456789.',
     validationFailed: 'La validación falló.',
 

@@ -72,7 +72,11 @@ export function ObligationForm({
   taxIdEditable = true,
 }: Props) {
   const { t, TYPE_LABELS } = useDictionary();
-  const schema = useMemo(() => buildObligationFormSchema(validationMessages(t)), [t]);
+  const schema = useMemo(
+    () =>
+      buildObligationFormSchema(validationMessages(t), { taxIdRequired: taxIdEditable }),
+    [t, taxIdEditable],
+  );
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
     ActionResult | undefined,
@@ -81,8 +85,14 @@ export function ObligationForm({
 
   // Client-side validation errors (instant feedback before the round-trip).
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
-  // Controlled `type` so the native <select> value reaches the server action.
-  const [type, setType] = useState<ObligationType>(defaults.type);
+  // Controlled fields. React 19 auto-resets *uncontrolled* fields after a form
+  // action runs, which wiped user input on a failed submit; driving them from
+  // state preserves what was typed across validation errors.
+  const [values, setValues] = useState<ObligationFormDefaults>(defaults);
+  const set = <K extends keyof ObligationFormDefaults>(
+    k: K,
+    v: ObligationFormDefaults[K],
+  ) => setValues((p) => ({ ...p, [k]: v }));
 
   // Fire a toast once per server response. useActionState hands back a fresh
   // object each dispatch, so comparing identity guards against StrictMode /
@@ -138,8 +148,11 @@ export function ObligationForm({
       ) : null}
 
       <Field label={t.fType} htmlFor="fld-type">
-        <input type="hidden" name="type" value={type} />
-        <Select value={type} onValueChange={(v) => setType(v as ObligationType)}>
+        <input type="hidden" name="type" value={values.type} />
+        <Select
+          value={values.type}
+          onValueChange={(v) => set('type', v as ObligationType)}
+        >
           <SelectTrigger id="fld-type" className="w-full">
             <SelectValue />
           </SelectTrigger>
@@ -163,7 +176,8 @@ export function ObligationForm({
         <Input
           id="fld-title"
           name="title"
-          defaultValue={defaults.title}
+          value={values.title}
+          onChange={(e) => set('title', e.target.value)}
           aria-invalid={Boolean(errors.title)}
         />
       </Field>
@@ -173,7 +187,8 @@ export function ObligationForm({
           id="fld-desc"
           name="description"
           rows={3}
-          defaultValue={defaults.description}
+          value={values.description}
+          onChange={(e) => set('description', e.target.value)}
         />
       </Field>
 
@@ -190,7 +205,8 @@ export function ObligationForm({
             id="fld-due"
             name="dueDate"
             type="date"
-            defaultValue={defaults.dueDate}
+            value={values.dueDate}
+            onChange={(e) => set('dueDate', e.target.value)}
             aria-invalid={Boolean(errors.dueDate)}
           />
         </Field>
@@ -205,7 +221,8 @@ export function ObligationForm({
           <Input
             id="fld-owner"
             name="owner"
-            defaultValue={defaults.owner}
+            value={values.owner}
+            onChange={(e) => set('owner', e.target.value)}
             aria-invalid={Boolean(errors.owner)}
           />
         </Field>
@@ -214,6 +231,8 @@ export function ObligationForm({
       <Field
         label={t.fTaxId}
         htmlFor="fld-tax"
+        required={taxIdEditable}
+        requiredLabel={t.requiredMark}
         error={taxIdEditable ? errors.companyTaxId : undefined}
         help={taxIdEditable ? t.taxidHelp : t.taxidLocked}
       >
@@ -221,7 +240,8 @@ export function ObligationForm({
           id="fld-tax"
           name="companyTaxId"
           placeholder="12-3456789"
-          defaultValue={defaults.companyTaxId}
+          value={values.companyTaxId}
+          onChange={(e) => set('companyTaxId', e.target.value)}
           aria-invalid={taxIdEditable ? Boolean(errors.companyTaxId) : undefined}
           // The backend rejects tax-id changes on update; show it read-only.
           // A disabled input is also omitted from the submitted FormData.
@@ -231,7 +251,11 @@ export function ObligationForm({
       </Field>
 
       <Label className="flex cursor-pointer items-center gap-2.5 py-1 text-sm font-normal">
-        <Checkbox name="requiresDocument" defaultChecked={defaults.requiresDocument} />
+        <Checkbox
+          name="requiresDocument"
+          checked={values.requiresDocument}
+          onCheckedChange={(c) => set('requiresDocument', c === true)}
+        />
         {t.fRequiresDoc}
       </Label>
 

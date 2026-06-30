@@ -16,6 +16,7 @@ export interface ValidationMessages {
   dueRequired: string;
   dueInvalid: string;
   ownerRequired: string;
+  taxIdRequired: string;
   taxIdFormat: string;
 }
 
@@ -26,11 +27,23 @@ export function validationMessages(t: Dictionary['t']): ValidationMessages {
     dueRequired: t.vDueRequired,
     dueInvalid: t.vDueInvalid,
     ownerRequired: t.vOwnerRequired,
+    taxIdRequired: t.vTaxIdRequired,
     taxIdFormat: t.vTaxIdFormat,
   };
 }
 
-export function buildObligationFormSchema(m: ValidationMessages) {
+export interface ObligationSchemaOptions {
+  /**
+   * Require a tax id. Set on create (the backend stores it then); edit forms
+   * omit the field entirely since the backend rejects tax-id changes on update.
+   */
+  taxIdRequired?: boolean;
+}
+
+export function buildObligationFormSchema(
+  m: ValidationMessages,
+  { taxIdRequired = false }: ObligationSchemaOptions = {},
+) {
   return z.object({
     type: z.enum([
       'annual_report',
@@ -46,11 +59,17 @@ export function buildObligationFormSchema(m: ValidationMessages) {
       .refine((v) => !Number.isNaN(Date.parse(v)), m.dueInvalid),
     owner: z.string().trim().min(1, m.ownerRequired),
     requiresDocument: z.boolean().default(false),
-    companyTaxId: z
-      .string()
-      .trim()
-      .refine((v) => v === '' || TAX_ID_RE.test(v), m.taxIdFormat)
-      .default(''),
+    companyTaxId: taxIdRequired
+      ? z
+          .string()
+          .trim()
+          .min(1, m.taxIdRequired)
+          .refine((v) => TAX_ID_RE.test(v), m.taxIdFormat)
+      : z
+          .string()
+          .trim()
+          .refine((v) => v === '' || TAX_ID_RE.test(v), m.taxIdFormat)
+          .default(''),
   });
 }
 
